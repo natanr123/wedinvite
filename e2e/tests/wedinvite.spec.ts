@@ -1,0 +1,218 @@
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+
+const API_URL = 'http://localhost:3001/api';
+
+/** Creates an event straight through the API (fast setup for UI tests). */
+async function createEvent(request: APIRequestContext, title: string) {
+  const res = await request.post(`${API_URL}/events`, {
+    data: { title, eventDate: '2027-05-20' },
+  });
+  expect(res.ok()).toBeTruthy();
+  return (await res.json()) as { id: string; title: string };
+}
+
+async function createGuest(
+  request: APIRequestContext,
+  eventId: string,
+  firstNames: string[],
+  lastNames: string[] = [],
+) {
+  const res = await request.post(`${API_URL}/events/${eventId}/guests`, {
+    data: { firstNames, lastNames },
+  });
+  expect(res.ok()).toBeTruthy();
+  return (await res.json()) as { id: string };
+}
+
+async function addChip(page: Page, testId: string, value: string) {
+  await page.getByTestId(testId).fill(value);
+  await page.getByTestId(testId).press('Enter');
+}
+
+/**
+ * Opens the inline "add relation" panel on a specific guest's card.
+ * Targets the button's aria-label: relation chips on *other* cards can
+ * contain this guest's name, so filtering cards by text is ambiguous.
+ */
+async function openConnect(page: Page, guestName: string) {
+  await page.getByRole('button', { name: `Add a relation for ${guestName}` }).click();
+}
+
+/** Opens the full-screen "add guest" panel from the action bar. */
+async function openGuestPanel(page: Page) {
+  await page.getByTestId('open-guest-panel').click();
+  await expect(page.getByTestId('guest-panel')).toBeVisible();
+}
+
+test('creates an event from the home page and lands on its dashboard', async ({ page }) => {
+  const title = `E2E Wedding ${Date.now()}`;
+  await page.goto('/');
+  await page.getByTestId('event-title-input').fill(title);
+  await page.getByTestId('event-date-input').fill('2027-05-20');
+  await page.getByTestId('create-event-button').click();
+
+  await expect(page).toHaveURL(/\/events\/[0-9a-f-]{36}/);
+  await expect(page.getByTestId('event-title')).toHaveText(title);
+  await expect(page.getByTestId('event-date')).toHaveText('May 20, 2027');
+
+  // The event id is kept in localStorage, so it shows up on the home page.
+  await page.goto('/');
+  await expect(
+    page.getByTestId('saved-events').getByTestId('event-card').filter({ hasText: title }),
+  ).toBeVisible();
+});
+
+test('adds a guest with multiple first and last names', async ({ page, request }) => {
+  const event = await createEvent(request, `Guests ${Date.now()}`);
+  await page.goto(`/events/${event.id}`);
+
+  await openGuestPanel(page);
+  await addChip(page, 'first-names-input', 'Dana');
+  await addChip(page, 'first-names-input', 'Dani');
+  await addChip(page, 'last-names-input', 'Cohen');
+  await addChip(page, 'last-names-input', 'Levi');
+  await page.getByTestId('phone-input').fill('050-1234567');
+  await page.getByTestId('address-input').fill('1 Herzl St, Tel Aviv');
+  await page.getByTestId('add-guest-button').click();
+
+  // The single-action panel closes after a successful add.
+  await expect(page.getByTestId('guest-panel')).toHaveCount(0);
+
+  const card = page.getByTestId('guest-card');
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText('Dana Cohen');
+  await expect(card).toContainText('aka');
+  await expect(card).toContainText('Dani');
+  await expect(card).toContainText('Levi');
+  await expect(card).toContainText('050-1234567');
+  await expect(page.getByTestId('guest-count')).toHaveText('(1)');
+});
+
+test('requires at least one first name', async ({ page, request }) => {
+  const event = await createEvent(request, `Validation ${Date.now()}`);
+  await page.goto(`/events/${event.id}`);
+
+  await openGuestPanel(page);
+  await addChip(page, 'last-names-input', 'Cohen');
+  await page.getByTestId('add-guest-button').click();
+
+  await expect(page.getByTestId('guest-form-error')).toContainText('at least one first name');
+  // The panel stays open on a validation error.
+  await expect(page.getByTestId('guest-panel')).toBeVisible();
+  await expect(page.getByTestId('guest-card')).toHaveCount(0);
+});
+
+test('warns about a possible duplicate guest (case-insensitive, any name combo)', async ({
+  page,
+  request,
+}) => {
+  const event = await createEvent(request, `Duplicates ${Date.now()}`);
+  await createGuest(request, event.id, ['Dana', 'Dani'], ['Cohen', 'Levi']);
+  await page.goto(`/events/${event.id}`);
+
+  // Match against the *secondary* names, in a different letter case.
+  await openGuestPanel(page);
+  await addChip(page, 'first-names-input', 'dani');
+  await addChip(page, 'last-names-input', 'levi');
+
+  await expect(page.getByTestId('duplicate-warning')).toContainText('Dana Cohen');
+
+  // The warning does not block adding (it may genuinely be someone else).
+  await page.getByTestId('add-guest-button').click();
+  await expect(page.getByTestId('guest-card')).toHaveCount(2);
+});
+
+test('connects two guests with a preset type', async ({ page, request }) => {
+  const event = await createEvent(request, `Relations ${Date.now()}`);
+  await createGuest(request, event.id, ['Dana'], ['Cohen']);
+  await createGuest(request, event.id, ['Noa'], ['Mizrahi']);
+  await page.goto(`/events/${event.id}`);
+
+  // Relations are added from a guest's own card: that guest is side A.
+  await openConnect(page, 'Dana Cohen');
+  await page.getByTestId('guest-b-select').selectOption({ label: 'Noa Mizrahi' });
+  await page.getByTestId('type-select').selectOption('Sister');
+  await page.getByTestId('add-relation-button').click();
+
+  const row = page.getByTestId('relation-row');
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('Dana Cohen');
+  await expect(row).toContainText('Sister');
+  await expect(row).toContainText('Noa Mizrahi');
+  await expect(page.getByTestId('relation-count')).toHaveText('(1)');
+});
+
+test('rejects a duplicate relation, even reversed', async ({ page, request }) => {
+  const event = await createEvent(request, `Dup relations ${Date.now()}`);
+  const a = await createGuest(request, event.id, ['Dana'], ['Cohen']);
+  const b = await createGuest(request, event.id, ['Noa'], ['Mizrahi']);
+  const res = await request.post(`${API_URL}/events/${event.id}/relations`, {
+    data: { guestAId: a.id, guestBId: b.id, typeLabel: 'Friend' },
+  });
+  expect(res.ok()).toBeTruthy();
+  await page.goto(`/events/${event.id}`);
+
+  // Same pair reversed, same type — the API answers 409 and the UI surfaces it.
+  // Add it from Noa's card (Noa is side A this time); the API treats it as the same pair.
+  await openConnect(page, 'Noa Mizrahi');
+  await page.getByTestId('guest-b-select').selectOption({ label: 'Dana Cohen' });
+  await page.getByTestId('type-select').selectOption('Friend');
+  await page.getByTestId('add-relation-button').click();
+
+  await expect(page.getByTestId('relation-form-error')).toContainText('already exists');
+  await expect(page.getByTestId('relation-row')).toHaveCount(1);
+});
+
+test('adds a relation with a custom type and offers it again afterwards', async ({
+  page,
+  request,
+}) => {
+  const event = await createEvent(request, `Custom type ${Date.now()}`);
+  await createGuest(request, event.id, ['Dana'], ['Cohen']);
+  await createGuest(request, event.id, ['Noa'], ['Mizrahi']);
+  await page.goto(`/events/${event.id}`);
+
+  await openConnect(page, 'Dana Cohen');
+  await page.getByTestId('guest-b-select').selectOption({ label: 'Noa Mizrahi' });
+  await page.getByTestId('type-select').selectOption('__custom__');
+  await page.getByTestId('custom-type-input').fill('Army Buddy');
+  await page.getByTestId('add-relation-button').click();
+
+  await expect(page.getByTestId('relation-row')).toContainText('Army Buddy');
+
+  // Reopen the panel — the custom type is now a regular option in the dropdown.
+  await openConnect(page, 'Dana Cohen');
+  await expect(
+    page.getByTestId('type-select').locator('option', { hasText: 'Army Buddy' }),
+  ).toHaveCount(1);
+});
+
+test('guest and relation panels are mutually exclusive (one action at a time)', async ({
+  page,
+  request,
+}) => {
+  const event = await createEvent(request, `Exclusive ${Date.now()}`);
+  await createGuest(request, event.id, ['Dana'], ['Cohen']);
+  await createGuest(request, event.id, ['Noa'], ['Mizrahi']);
+  await page.goto(`/events/${event.id}`);
+
+  // While creating a guest there is no way to create a relation:
+  // the action button and every per-card Connect button are disabled.
+  await openGuestPanel(page);
+  await expect(page.getByTestId('relation-panel')).toHaveCount(0);
+  await expect(page.getByTestId('open-relation-panel')).toBeDisabled();
+  await expect(page.getByTestId('connect-button').first()).toBeDisabled();
+
+  // Escape closes the guest form; only then can the relation form open.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('guest-panel')).toHaveCount(0);
+  await page.getByTestId('open-relation-panel').click();
+  await expect(page.getByTestId('relation-panel')).toBeVisible();
+  await expect(page.getByTestId('guest-panel')).toHaveCount(0);
+  await expect(page.getByTestId('open-guest-panel')).toBeDisabled();
+});
+
+test('shows not-found for an event that does not exist', async ({ page }) => {
+  await page.goto('/events/00000000-0000-4000-8000-000000000000');
+  await expect(page.getByRole('heading', { name: 'Event not found' })).toBeVisible();
+});

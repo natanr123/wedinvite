@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: wedinvite
+      POSTGRES_PASSWORD: wedinvite
+      POSTGRES_DB: wedinvite
+    ports:
+      # Host-side forwarded port. 5432/5433/5435 are taken by other local
+      # stacks on this machine; 54329 also matches the Supabase-CLI local
+      # port range, easing the later move to Supabase. If you change this,
+      # also update DATABASE_URL in api/.env.
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  postgres-data:

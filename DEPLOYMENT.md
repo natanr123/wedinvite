@@ -44,8 +44,8 @@ Rules:
 
 ```
 # api/.env.prod
-DATABASE_URL=postgresql://postgres.<ref>:<pw>@aws-1-<region>.pooler.supabase.com:6543/postgres?sslmode=require
-DIRECT_DATABASE_URL=postgresql://postgres.<ref>:<pw>@aws-1-<region>.pooler.supabase.com:5432/postgres?sslmode=require   # session mode — migrations only
+DATABASE_URL=postgresql://postgres.<ref>:<pw>@aws-1-<region>.pooler.supabase.com:6543/postgres
+DIRECT_DATABASE_URL=postgresql://postgres.<ref>:<pw>@aws-1-<region>.pooler.supabase.com:5432/postgres   # session mode — migrations only
 WEB_ORIGIN=https://<web-prod-domain>
 
 # web/.env.prod
@@ -58,7 +58,7 @@ NEXT_PUBLIC_API_URL=https://<api-prod-domain>/api
   right for serverless fan-out. Safe with TypeORM: node-postgres doesn't use named
   prepared statements by default (unlike Prisma).
 - **Migrations** run against **session mode (port 5432)** — DDL doesn't belong on 6543.
-- SSL always on: `?sslmode=require` + `extra.ssl.rejectUnauthorized=false`
+- SSL always on via `DATABASE_SSL=true` → `ssl.rejectUnauthorized=false` (do NOT put `sslmode=require` in the URL — pg then enforces CA verification and fails on the pooler cert chain)
   (or bundle the Supabase CA for strict verification later).
 - Pool sizing per function instance: `extra: { max: 8, min: 1, idleTimeoutMillis: 5000,
   connectionTimeoutMillis: 5000 }` (pg pool max is per instance, not global; never 1

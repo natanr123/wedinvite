@@ -19,3 +19,6 @@ playwright-report/
 .DS_Store
 .idea/
 .venv/
+
+# Supabase CLI local state
+supabase/.temp/

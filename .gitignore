@@ -3,9 +3,10 @@ node_modules/
 dist/
 .next/
 
-# Environment (commit the .env.example files instead)
-.env
-.env.local
+# Environment — every .env* variant stays out of git except the committed templates
+.env*
+!.env.example
+!.env.prod.example
 
 # Temp / generated artifacts — keep all scratch files under tmp/
 tmp/

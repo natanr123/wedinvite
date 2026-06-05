@@ -9,8 +9,8 @@ import { HeartIcon, LinkIcon } from './icons';
 const CUSTOM_VALUE = '__custom__';
 
 interface RelationFormProps {
-  /** Preselected side A — set when opened from a guest's "Connect" button. */
-  fromGuest?: Guest | null;
+  /** The guest whose "Connect" button opened this form — always side A. */
+  fromGuest: Guest;
   guests: Guest[];
   types: RelationTypes;
   onAdd: (input: CreateRelationInput) => Promise<void>;
@@ -21,7 +21,11 @@ interface RelationFormProps {
 const fieldClass =
   'w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100';
 
-/** A relation reads "A is <type> of B" — side A is the subject. */
+/**
+ * A relation reads "A is <type> of B". Side A is fixed — it's the guest the
+ * user clicked "Connect" on, so the form only asks for the type and the
+ * other guest.
+ */
 export default function RelationForm({
   fromGuest,
   guests,
@@ -29,42 +33,39 @@ export default function RelationForm({
   onAdd,
   onDone,
 }: RelationFormProps) {
-  const [guestAId, setGuestAId] = useState(fromGuest?.id ?? '');
   const [guestBId, setGuestBId] = useState('');
   const [typeChoice, setTypeChoice] = useState('');
   const [customType, setCustomType] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  if (guests.length < 2) {
+  const fromName = primaryName(fromGuest);
+  const others = guests.filter((guest) => guest.id !== fromGuest.id);
+
+  if (others.length === 0) {
     return (
       <div
         className="flex items-center gap-2 py-2 text-sm text-stone-500"
         data-testid="relation-form-disabled"
       >
         <LinkIcon className="h-4 w-4 text-rose-300" />
-        Add at least two guests to start connecting them.
+        Add another guest first to connect {fromName} to someone.
       </div>
     );
   }
 
-  const nameOf = (guestId: string) => {
-    const guest = guests.find((g) => g.id === guestId);
-    return guest ? primaryName(guest) : '';
-  };
   const previewType = typeChoice === CUSTOM_VALUE ? customType.trim() : typeChoice;
-  const previewReady = guestAId && guestBId && previewType;
+  const otherName = guestBId
+    ? primaryName(others.find((guest) => guest.id === guestBId) ?? fromGuest)
+    : '';
+  const previewReady = guestBId && previewType;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     const typeLabel = typeChoice === CUSTOM_VALUE ? customType.trim() : typeChoice;
-    if (!guestAId || !guestBId) {
-      setError('Pick both guests');
-      return;
-    }
-    if (guestAId === guestBId) {
-      setError('Pick two different guests');
+    if (!guestBId) {
+      setError('Pick the other guest');
       return;
     }
     if (!typeLabel) {
@@ -73,7 +74,7 @@ export default function RelationForm({
     }
     setSaving(true);
     try {
-      await onAdd({ guestAId, guestBId, typeLabel });
+      await onAdd({ guestAId: fromGuest.id, guestBId, typeLabel });
       setGuestBId('');
       setTypeChoice('');
       setCustomType('');
@@ -87,64 +88,61 @@ export default function RelationForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3" data-testid="relation-form">
-      <div>
-        <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="relation-a">
-          Guest
-        </label>
-        <select
-          id="relation-a"
-          data-testid="guest-a-select"
-          className={fieldClass}
-          value={guestAId}
-          onChange={(e) => {
-            setGuestAId(e.target.value);
-            // The other guest can no longer be the same person.
-            if (e.target.value === guestBId) setGuestBId('');
-          }}
-        >
-          <option value="">Choose a guest…</option>
-          {guests.map((guest) => (
-            <option key={guest.id} value={guest.id}>
-              {primaryName(guest)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="relation-type">
-          {guestAId ? `How does ${nameOf(guestAId)} know them?` : 'How do they know each other?'}
-        </label>
-        <select
-          id="relation-type"
-          data-testid="type-select"
-          className={fieldClass}
-          value={typeChoice}
-          onChange={(e) => setTypeChoice(e.target.value)}
-        >
-          <option value="">Choose a type…</option>
-          {types.custom.length > 0 && (
-            <optgroup label="Your types">
-              {types.custom.map((label) => (
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="relation-type">
+            How does {fromName} know them?
+          </label>
+          <select
+            id="relation-type"
+            data-testid="type-select"
+            className={fieldClass}
+            value={typeChoice}
+            onChange={(e) => setTypeChoice(e.target.value)}
+          >
+            <option value="">Choose a type…</option>
+            {types.custom.length > 0 && (
+              <optgroup label="Your types">
+                {types.custom.map((label) => (
+                  <option key={label} value={label}>
+                    {label}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label="Presets">
+              {types.presets.map((label) => (
                 <option key={label} value={label}>
                   {label}
                 </option>
               ))}
             </optgroup>
-          )}
-          <optgroup label="Presets">
-            {types.presets.map((label) => (
-              <option key={label} value={label}>
-                {label}
+            <option value={CUSTOM_VALUE}>+ Add your own type…</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="relation-b">
+            Other guest
+          </label>
+          <select
+            id="relation-b"
+            data-testid="guest-b-select"
+            className={fieldClass}
+            value={guestBId}
+            onChange={(e) => setGuestBId(e.target.value)}
+          >
+            <option value="">Choose a guest…</option>
+            {others.map((guest) => (
+              <option key={guest.id} value={guest.id}>
+                {primaryName(guest)}
               </option>
             ))}
-          </optgroup>
-          <option value={CUSTOM_VALUE}>+ Add your own type…</option>
-        </select>
+          </select>
+        </div>
       </div>
 
       {typeChoice === CUSTOM_VALUE && (
-        <div>
+        <div className="sm:max-w-xs">
           <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="custom-type">
             New type name
           </label>
@@ -160,34 +158,12 @@ export default function RelationForm({
         </div>
       )}
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="relation-b">
-          Other guest
-        </label>
-        <select
-          id="relation-b"
-          data-testid="guest-b-select"
-          className={fieldClass}
-          value={guestBId}
-          onChange={(e) => setGuestBId(e.target.value)}
-        >
-          <option value="">Choose a guest…</option>
-          {guests
-            .filter((guest) => guest.id !== guestAId)
-            .map((guest) => (
-              <option key={guest.id} value={guest.id}>
-                {primaryName(guest)}
-              </option>
-            ))}
-        </select>
-      </div>
-
       {previewReady && (
         <p className="flex flex-wrap items-center gap-1.5 text-xs text-stone-600">
           <HeartIcon className="h-3.5 w-3.5 text-rose-400" />
-          <span className="font-medium text-stone-900">{nameOf(guestAId)}</span>
+          <span className="font-medium text-stone-900">{fromName}</span>
           is <span className="font-medium text-rose-700">{previewType}</span> of
-          <span className="font-medium text-stone-900">{nameOf(guestBId)}</span>
+          <span className="font-medium text-stone-900">{otherName}</span>
         </p>
       )}
 

@@ -8,9 +8,10 @@ import GuestList from '@/components/GuestList';
 import Panel from '@/components/Panel';
 import RelationForm from '@/components/RelationForm';
 import RelationList from '@/components/RelationList';
-import { CalendarIcon, HeartIcon, PlusIcon } from '@/components/icons';
+import { CalendarIcon, PlusIcon } from '@/components/icons';
 import { api, ApiError } from '@/lib/api';
 import { formatEventDate } from '@/lib/format';
+import { primaryName } from '@/lib/names';
 import { removeEventId, saveEventId } from '@/lib/storage';
 import type {
   CreateGuestInput,
@@ -25,13 +26,14 @@ type Status = 'loading' | 'ready' | 'not-found' | 'error';
 type Tab = 'guests' | 'relations';
 
 /**
- * One action at a time: either the "add guest" panel or the "add relation"
- * panel is open — never both (single state field).
+ * One action at a time: either the "add guest" form or the "add relation"
+ * form is open — never both (single state field). Relations are only added
+ * from a guest's "Connect" button, so fromGuest is always known.
  */
 type PanelState =
   | { kind: 'none' }
   | { kind: 'guest' }
-  | { kind: 'relation'; fromGuest?: Guest };
+  | { kind: 'relation'; fromGuest: Guest };
 
 export default function EventPage() {
   const { id } = useParams<{ id: string }>();
@@ -176,9 +178,10 @@ export default function EventPage() {
           )}
         </header>
 
-        {/* One action at a time: each button expands its own inline form below.
-            While one form is open, the other action is disabled. */}
-        <div className="mb-4 grid grid-cols-2 gap-2">
+        {/* One action at a time: the button expands the inline guest form;
+            relations are added from a guest card's "Connect" button. While
+            either form is open, the other entry points are disabled. */}
+        <div className="mb-4">
           <button
             type="button"
             data-testid="open-guest-panel"
@@ -187,26 +190,12 @@ export default function EventPage() {
               setPanel(panel.kind === 'guest' ? { kind: 'none' } : { kind: 'guest' })
             }
             disabled={panel.kind === 'relation'}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-rose-700 disabled:opacity-40 aria-expanded:bg-rose-800"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-rose-700 disabled:opacity-40 aria-expanded:bg-rose-800"
           >
             <PlusIcon
               className={`h-4 w-4 transition-transform ${panel.kind === 'guest' ? 'rotate-45' : ''}`}
             />
             {panel.kind === 'guest' ? 'Close' : 'Add guest'}
-          </button>
-          <button
-            type="button"
-            data-testid="open-relation-panel"
-            aria-expanded={panel.kind === 'relation'}
-            onClick={() =>
-              setPanel(panel.kind === 'relation' ? { kind: 'none' } : { kind: 'relation' })
-            }
-            disabled={guests.length < 2 || panel.kind === 'guest'}
-            title={guests.length < 2 ? 'Add at least two guests first' : undefined}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm font-medium text-rose-700 shadow-sm hover:bg-rose-50 disabled:opacity-40 aria-expanded:border-rose-400 aria-expanded:bg-rose-100"
-          >
-            <HeartIcon className="h-4 w-4" />
-            {panel.kind === 'relation' ? 'Close' : 'Add relation'}
           </button>
         </div>
 
@@ -220,13 +209,17 @@ export default function EventPage() {
           </Panel>
         )}
         {panel.kind === 'relation' && (
-          <Panel title="Add relation" onClose={closePanel} testId="relation-panel">
+          <Panel
+            title={`Add relation for ${primaryName(panel.fromGuest)}`}
+            onClose={closePanel}
+            testId="relation-panel"
+          >
             <p className="mb-3 text-xs text-stone-500">
               Who knows whom — siblings, friends, coworkers…
             </p>
             <RelationForm
-              // Remount when opened for a different guest so side A reseeds.
-              key={panel.fromGuest?.id ?? 'blank'}
+              // Remount when opened for a different guest so the form resets.
+              key={panel.fromGuest.id}
               fromGuest={panel.fromGuest}
               guests={guests}
               types={types}
@@ -287,7 +280,7 @@ export default function EventPage() {
           {relations.length === 0 && guests.length >= 2 && (
             <p className="mt-2 text-center text-xs text-stone-500">
               Tip: hit <span className="font-medium text-rose-700">Connect</span> on a
-              guest&apos;s card, or use “Add relation” above.
+              guest&apos;s card to link them to someone.
             </p>
           )}
         </div>

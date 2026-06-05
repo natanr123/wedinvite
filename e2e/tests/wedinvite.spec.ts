@@ -240,16 +240,16 @@ test('guest and relation panels are mutually exclusive (one action at a time)', 
   await page.goto(`/events/${event.id}`);
 
   // While creating a guest there is no way to create a relation:
-  // the action button and every per-card Connect button are disabled.
+  // every per-card Connect button is disabled.
   await openGuestPanel(page);
   await expect(page.getByTestId('relation-panel')).toHaveCount(0);
-  await expect(page.getByTestId('open-relation-panel')).toBeDisabled();
   await expect(page.getByTestId('connect-button').first()).toBeDisabled();
 
-  // Escape closes the guest form; only then can the relation form open.
+  // Escape closes the guest form; only then can the relation form open
+  // (via a guest's Connect button — the only entry point).
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('guest-panel')).toHaveCount(0);
-  await page.getByTestId('open-relation-panel').click();
+  await openConnect(page, 'Dana Cohen');
   await expect(page.getByTestId('relation-panel')).toBeVisible();
   await expect(page.getByTestId('guest-panel')).toHaveCount(0);
   await expect(page.getByTestId('open-guest-panel')).toBeDisabled();

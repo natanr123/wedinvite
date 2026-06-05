@@ -42,7 +42,7 @@ export interface RelationTypes {
 
 export interface CreateGuestInput {
   firstNames: string[];
-  lastNames?: string[];
+  lastNames: string[]; // required — name combinations are unique per event
   phone?: string;
   address?: string;
 }

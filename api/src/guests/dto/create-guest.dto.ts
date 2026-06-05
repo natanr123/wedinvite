@@ -17,12 +17,12 @@ export class CreateGuestDto {
   firstNames!: string[];
 
   /** All known last names (married, maiden, …); the first entry is the primary one. */
-  @IsOptional()
   @IsArray()
+  @ArrayMinSize(1)
   @ArrayMaxSize(10)
   @IsString({ each: true })
   @MaxLength(100, { each: true })
-  lastNames?: string[];
+  lastNames!: string[];
 
   @IsOptional()
   @IsString()

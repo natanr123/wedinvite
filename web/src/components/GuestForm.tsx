@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ApiError } from '@/lib/api';
-import { findPossibleDuplicates, primaryName } from '@/lib/names';
+import { findExactDuplicates, findPossibleDuplicates, primaryName } from '@/lib/names';
 import type { CreateGuestInput, Guest } from '@/lib/types';
 import ChipInput from './ChipInput';
 import { SparklesIcon } from './icons';
@@ -25,7 +25,12 @@ export default function GuestForm({ guests, onAdd, onDone }: GuestFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const duplicates = findPossibleDuplicates(guests, firstNames, lastNames);
+  // Hard conflicts (the server rejects these with 409 — submit is blocked)
+  // vs soft "looks similar" hints (still allowed).
+  const exactDuplicates = findExactDuplicates(guests, firstNames, lastNames);
+  const softDuplicates = findPossibleDuplicates(guests, firstNames, lastNames).filter(
+    (guest) => !exactDuplicates.includes(guest),
+  );
   // Only meaningful once a first name exists — a guest can't be created without one.
   const preview = firstNames[0] ? [firstNames[0], lastNames[0]].filter(Boolean).join(' ') : '';
   const extraNames =
@@ -36,6 +41,10 @@ export default function GuestForm({ guests, onAdd, onDone }: GuestFormProps) {
     setError(null);
     if (firstNames.length === 0) {
       setError('Add at least one first name (press Enter to confirm a name)');
+      return;
+    }
+    if (lastNames.length === 0) {
+      setError('Add at least one last name (press Enter to confirm a name)');
       return;
     }
     setSaving(true);
@@ -70,7 +79,7 @@ export default function GuestForm({ guests, onAdd, onDone }: GuestFormProps) {
           testId="first-names-input"
         />
         <ChipInput
-          label="Last names"
+          label="Last names *"
           values={lastNames}
           onChange={setLastNames}
           placeholder="Cohen, Levi…"
@@ -119,13 +128,23 @@ export default function GuestForm({ guests, onAdd, onDone }: GuestFormProps) {
         </p>
       )}
 
-      {duplicates.length > 0 && (
+      {exactDuplicates.length > 0 && (
+        <p
+          data-testid="duplicate-blocked"
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          ✕ {exactDuplicates.map((g) => primaryName(g)).join(', ')} is already on the
+          list — guests can’t share a name combination. Use a different name (nickname,
+          middle name…) to tell them apart.
+        </p>
+      )}
+      {softDuplicates.length > 0 && (
         <p
           data-testid="duplicate-warning"
           className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
         >
-          ⚠ Possible duplicate: {duplicates.map((g) => primaryName(g)).join(', ')}{' '}
-          already on the list. You can still add this guest if it’s someone else.
+          ⚠ Looks similar to {softDuplicates.map((g) => primaryName(g)).join(', ')} —
+          double-check it’s a different person.
         </p>
       )}
       {error && (
@@ -136,7 +155,7 @@ export default function GuestForm({ guests, onAdd, onDone }: GuestFormProps) {
 
       <button
         type="submit"
-        disabled={saving}
+        disabled={saving || exactDuplicates.length > 0}
         data-testid="add-guest-button"
         className="w-full rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
       >

@@ -25,9 +25,42 @@ export function aliasNames(guest: Guest): GuestName[] {
 }
 
 /**
+ * Client-side mirror of the server's guest_name_norm(): unicode-trim + NFKC
+ * + lowercase. Display/UX only — the DB constraint is the authority.
+ */
+function normName(value: string): string {
+  return value
+    .replace(/^[\s\u00A0\u200B\uFEFF]+|[\s\u00A0\u200B\uFEFF]+$/g, '')
+    .normalize('NFKC')
+    .toLowerCase();
+}
+
+/**
+ * Guests that HARD-conflict with the entered names: some (first x last)
+ * combination is already claimed (the DB rejects these with 409).
+ */
+export function findExactDuplicates(
+  guests: Guest[],
+  firstNames: string[],
+  lastNames: string[],
+): Guest[] {
+  const firsts = new Set(firstNames.map(normName));
+  const lasts = new Set(lastNames.map(normName));
+  if (firsts.size === 0 || lasts.size === 0) return [];
+
+  return guests.filter((guest) => {
+    const guestFirsts = byKind(guest, 'first').map(normName);
+    const guestLasts = byKind(guest, 'last').map(normName);
+    return (
+      guestFirsts.some((v) => firsts.has(v)) && guestLasts.some((v) => lasts.has(v))
+    );
+  });
+}
+
+/**
  * Guests that look like the one being entered: some first name matches and —
  * when both sides have last names — some last name matches too (all
- * case-insensitive). Used for the "possible duplicate" warning.
+ * case-insensitive). Used for the soft "possible duplicate" warning.
  */
 export function findPossibleDuplicates(
   guests: Guest[],

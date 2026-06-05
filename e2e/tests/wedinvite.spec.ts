@@ -15,7 +15,7 @@ async function createGuest(
   request: APIRequestContext,
   eventId: string,
   firstNames: string[],
-  lastNames: string[] = [],
+  lastNames: string[],
 ) {
   const res = await request.post(`${API_URL}/events/${eventId}/guests`, {
     data: { firstNames, lastNames },
@@ -102,7 +102,7 @@ test('requires at least one first name', async ({ page, request }) => {
   await expect(page.getByTestId('guest-card')).toHaveCount(0);
 });
 
-test('warns about a possible duplicate guest (case-insensitive, any name combo)', async ({
+test('hard-blocks a duplicate name combination (case-insensitive, any combo)', async ({
   page,
   request,
 }) => {
@@ -110,16 +110,59 @@ test('warns about a possible duplicate guest (case-insensitive, any name combo)'
   await createGuest(request, event.id, ['Dana', 'Dani'], ['Cohen', 'Levi']);
   await page.goto(`/events/${event.id}`);
 
-  // Match against the *secondary* names, in a different letter case.
+  // Match against the *secondary* names, in a different letter case — still a
+  // claimed (first x last) combination, so the form blocks the submit.
   await openGuestPanel(page);
   await addChip(page, 'first-names-input', 'dani');
   await addChip(page, 'last-names-input', 'levi');
 
-  await expect(page.getByTestId('duplicate-warning')).toContainText('Dana Cohen');
+  await expect(page.getByTestId('duplicate-blocked')).toContainText('Dana Cohen');
+  await expect(page.getByTestId('add-guest-button')).toBeDisabled();
+  await expect(page.getByTestId('guest-card')).toHaveCount(1);
+});
 
-  // The warning does not block adding (it may genuinely be someone else).
+test('the API rejects duplicate name combinations with 409 (DB-enforced)', async ({
+  request,
+}) => {
+  const event = await createEvent(request, `Hard dup ${Date.now()}`);
+  await createGuest(request, event.id, ['Dana', 'Dani'], ['Cohen', 'Levi']);
+
+  // Exact combo via alias names, different case.
+  const dup = await request.post(`${API_URL}/events/${event.id}/guests`, {
+    data: { firstNames: ['DANI'], lastNames: ['levi'] },
+  });
+  expect(dup.status()).toBe(409);
+  const body = (await dup.json()) as { message: string; conflictingGuestName: string };
+  expect(body.message).toContain('already on this list');
+  expect(body.conflictingGuestName).toBe('Dana Cohen');
+
+  // Unicode variant (NFD vs NFC) of the same name is also caught.
+  const nfc = await request.post(`${API_URL}/events/${event.id}/guests`, {
+    data: { firstNames: ['Yossi'], lastNames: ['Cohén'] }, // é composed
+  });
+  expect(nfc.ok()).toBeTruthy();
+  const nfd = await request.post(`${API_URL}/events/${event.id}/guests`, {
+    data: { firstNames: ['Yossi'], lastNames: ['Cohén'] }, // é decomposed
+  });
+  expect(nfd.status()).toBe(409);
+
+  // Sharing only ONE side of the name is fine — not a full combination.
+  const ok = await request.post(`${API_URL}/events/${event.id}/guests`, {
+    data: { firstNames: ['Noa'], lastNames: ['Cohen'] },
+  });
+  expect(ok.ok()).toBeTruthy();
+});
+
+test('requires at least one last name', async ({ page, request }) => {
+  const event = await createEvent(request, `Last name required ${Date.now()}`);
+  await page.goto(`/events/${event.id}`);
+
+  await openGuestPanel(page);
+  await addChip(page, 'first-names-input', 'Dana');
   await page.getByTestId('add-guest-button').click();
-  await expect(page.getByTestId('guest-card')).toHaveCount(2);
+
+  await expect(page.getByTestId('guest-form-error')).toContainText('at least one last name');
+  await expect(page.getByTestId('guest-card')).toHaveCount(0);
 });
 
 test('connects two guests with a preset type', async ({ page, request }) => {

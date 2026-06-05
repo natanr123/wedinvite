@@ -51,6 +51,16 @@ guest_names                  -- multiple first/last names per guest
   value       text not null
   position    int            -- 0 = primary display name
 
+guest_name_pairs             -- HARD no-duplicate-guest constraint
+  event_id    uuid ┐
+  first_norm  text ├ PRIMARY KEY = the constraint: no two guests in an event
+  last_norm   text ┘ may share ANY (first × last) combination
+  guest_id    uuid   composite fk → guests(event_id, id) (cascade)
+  -- norms come from guest_name_norm(text): unicode-trim + NFKC + lower(),
+  -- the single normalization authority (SQL only, never reimplemented in JS).
+  -- ≥1 first AND ≥1 last name are required; people cannot share a name
+  -- (product decision 2026-06-05 — a differentiator may come later).
+
 relation_types             -- user-defined types; presets are constants in the API
   id          uuid pk
   event_id    uuid fk → events (cascade)

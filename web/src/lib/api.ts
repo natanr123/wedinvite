@@ -13,6 +13,8 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    /** Full error body — e.g. conflictingGuestId/Name on 409 duplicate guest. */
+    public readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -31,16 +33,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     let message = res.statusText || 'Request failed';
+    let details: Record<string, unknown> | undefined;
     try {
       const body: unknown = await res.json();
-      if (body && typeof body === 'object' && 'message' in body) {
-        const m = (body as { message: string | string[] }).message;
-        message = Array.isArray(m) ? m.join(', ') : m;
+      if (body && typeof body === 'object') {
+        details = body as Record<string, unknown>;
+        if ('message' in body) {
+          const m = (body as { message: string | string[] }).message;
+          message = Array.isArray(m) ? m.join(', ') : m;
+        }
       }
     } catch {
       // non-JSON error body — keep the status text
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, details);
   }
   if (res.status === 204) {
     return undefined as T;

@@ -230,6 +230,64 @@ test('adds a relation with a custom type and offers it again afterwards', async 
   ).toHaveCount(1);
 });
 
+test('edits a guest from their card (same inline panel as the add form)', async ({
+  page,
+  request,
+}) => {
+  const event = await createEvent(request, `Edit guest ${Date.now()}`);
+  await createGuest(request, event.id, ['Dana'], ['Cohen']);
+  await page.goto(`/events/${event.id}`);
+
+  // Clicking the card body opens the prefilled edit form.
+  await page.getByRole('button', { name: 'Edit Dana Cohen' }).click();
+  const panel = page.getByTestId('edit-guest-panel');
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText('Edit Dana Cohen');
+  // Prefilled chips — each has its own remove button.
+  await expect(panel.getByRole('button', { name: 'Remove Dana' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'Remove Cohen' })).toBeVisible();
+
+  // Add a nickname and a phone, save.
+  await addChip(page, 'first-names-input', 'Dani');
+  await page.getByTestId('phone-input').fill('050-7654321');
+  await page.getByTestId('add-guest-button').click();
+
+  await expect(page.getByTestId('edit-guest-panel')).toHaveCount(0);
+  const card = page.getByTestId('guest-card');
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText('Dani');
+  await expect(card).toContainText('050-7654321');
+});
+
+test('editing a guest cannot steal another guest\'s name combination', async ({
+  page,
+  request,
+}) => {
+  const event = await createEvent(request, `Edit dup ${Date.now()}`);
+  await createGuest(request, event.id, ['Dana'], ['Cohen']);
+  const noa = await createGuest(request, event.id, ['Noa'], ['Mizrahi']);
+
+  // API-level: PATCH onto a claimed combination → 409.
+  const res = await request.patch(`${API_URL}/events/${event.id}/guests/${noa.id}`, {
+    data: { firstNames: ['DANA'], lastNames: ['cohen'] },
+  });
+  expect(res.status()).toBe(409);
+
+  // UI-level: the edit form blocks the exact combination too.
+  await page.goto(`/events/${event.id}`);
+  await page.getByRole('button', { name: 'Edit Noa Mizrahi' }).click();
+  await addChip(page, 'first-names-input', 'Dana');
+  await addChip(page, 'last-names-input', 'Cohen');
+  await expect(page.getByTestId('duplicate-blocked')).toContainText('Dana Cohen');
+  await expect(page.getByTestId('add-guest-button')).toBeDisabled();
+
+  // Re-saving its own unchanged names is NOT a conflict.
+  const self = await request.patch(`${API_URL}/events/${event.id}/guests/${noa.id}`, {
+    data: { firstNames: ['Noa'], lastNames: ['Mizrahi'] },
+  });
+  expect(self.ok()).toBeTruthy();
+});
+
 test('guest and relation panels are mutually exclusive (one action at a time)', async ({
   page,
   request,

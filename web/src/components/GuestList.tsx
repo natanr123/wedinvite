@@ -12,8 +12,10 @@ interface GuestListProps {
   onDelete: (id: string) => Promise<void>;
   /** Opens the "add relation" panel with this guest preselected as side A. */
   onConnect: (guest: Guest) => void;
+  /** Opens the edit panel for this guest (clicking the card body). */
+  onEdit: (guest: Guest) => void;
   /** True while the "add guest" form is open — one action at a time. */
-  connectDisabled?: boolean;
+  actionsDisabled?: boolean;
 }
 
 const MAX_RELATION_CHIPS = 3;
@@ -43,7 +45,8 @@ export default function GuestList({
   relations,
   onDelete,
   onConnect,
-  connectDisabled = false,
+  onEdit,
+  actionsDisabled = false,
 }: GuestListProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -77,12 +80,22 @@ export default function GuestList({
             className="rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm"
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-start gap-3">
+              {/* The card body is the edit affordance. */}
+              <button
+                type="button"
+                data-testid="edit-guest-button"
+                aria-label={`Edit ${name}`}
+                title="Edit guest"
+                disabled={actionsDisabled}
+                onClick={() => onEdit(guest)}
+                className="-m-1 flex min-w-0 items-start gap-3 rounded-lg p-1 text-left hover:bg-rose-50/60 disabled:pointer-events-none"
+              >
                 <Avatar name={name} />
-                <div className="min-w-0">
-                  <p className="font-medium text-stone-900">{name}</p>
+                {/* spans only — <p>/<div> are invalid inside a <button> */}
+                <span className="block min-w-0">
+                  <span className="block font-medium text-stone-900">{name}</span>
                   {aliases.length > 0 && (
-                    <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-stone-500">
+                    <span className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-stone-500">
                       aka
                       {aliases.map((alias) => (
                         <span
@@ -92,10 +105,10 @@ export default function GuestList({
                           {alias.value}
                         </span>
                       ))}
-                    </p>
+                    </span>
                   )}
                   {(guest.phone || guest.address) && (
-                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-stone-500">
+                    <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-stone-500">
                       {guest.phone && (
                         <span className="inline-flex items-center gap-1">
                           <PhoneIcon className="h-3 w-3" />
@@ -108,10 +121,10 @@ export default function GuestList({
                           {guest.address}
                         </span>
                       )}
-                    </p>
+                    </span>
                   )}
                   {guestRelations.length > 0 && (
-                    <p className="mt-1.5 flex flex-wrap items-center gap-1">
+                    <span className="mt-1.5 flex flex-wrap items-center gap-1">
                       {visibleRelations.map((relation) => (
                         <span
                           key={relation.id}
@@ -125,27 +138,37 @@ export default function GuestList({
                         </span>
                       ))}
                       {hiddenCount > 0 && (
-                        <button
-                          type="button"
+                        <span
+                          role="button"
+                          tabIndex={0}
                           aria-expanded={isExpanded}
-                          onClick={() =>
-                            setExpanded((prev) => ({ ...prev, [guest.id]: !isExpanded }))
-                          }
+                          onClick={(e) => {
+                            // Inside the edit button — don't open the editor.
+                            e.stopPropagation();
+                            setExpanded((prev) => ({ ...prev, [guest.id]: !isExpanded }));
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setExpanded((prev) => ({ ...prev, [guest.id]: !isExpanded }));
+                            }
+                          }}
                           className="rounded-full px-1.5 py-0.5 text-xs text-stone-500 underline decoration-dotted hover:text-rose-700"
                         >
                           {isExpanded ? 'show less' : `+${hiddenCount} more`}
-                        </button>
+                        </span>
                       )}
-                    </p>
+                    </span>
                   )}
-                </div>
-              </div>
+                </span>
+              </button>
               <div className="flex shrink-0 flex-col items-end gap-1.5">
                 <button
                   type="button"
                   data-testid="connect-button"
                   aria-label={`Add a relation for ${name}`}
-                  disabled={connectDisabled}
+                  disabled={actionsDisabled}
                   className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-40"
                   onClick={() => onConnect(guest)}
                 >

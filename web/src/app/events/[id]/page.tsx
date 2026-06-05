@@ -26,13 +26,14 @@ type Status = 'loading' | 'ready' | 'not-found' | 'error';
 type Tab = 'guests' | 'relations';
 
 /**
- * One action at a time: either the "add guest" form or the "add relation"
- * form is open — never both (single state field). Relations are only added
- * from a guest's "Connect" button, so fromGuest is always known.
+ * One action at a time: the add-guest, edit-guest or add-relation form is
+ * open — never more than one (single state field). Relations are only added
+ * from a guest's "Connect" button; editing opens from the guest's card.
  */
 type PanelState =
   | { kind: 'none' }
   | { kind: 'guest' }
+  | { kind: 'edit'; guest: Guest }
   | { kind: 'relation'; fromGuest: Guest };
 
 export default function EventPage() {
@@ -94,6 +95,15 @@ export default function EventPage() {
       setGuests(await api.listGuests(id));
     },
     [id],
+  );
+
+  const handleUpdateGuest = useCallback(
+    async (guestId: string, input: CreateGuestInput) => {
+      await api.updateGuest(id, guestId, input);
+      // Names may have changed — relation rows display them too.
+      await refreshGuestsAndRelations();
+    },
+    [id, refreshGuestsAndRelations],
   );
 
   const handleDeleteGuest = useCallback(
@@ -189,7 +199,7 @@ export default function EventPage() {
             onClick={() =>
               setPanel(panel.kind === 'guest' ? { kind: 'none' } : { kind: 'guest' })
             }
-            disabled={panel.kind === 'relation'}
+            disabled={panel.kind === 'relation' || panel.kind === 'edit'}
             className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-rose-700 disabled:opacity-40 aria-expanded:bg-rose-800"
           >
             <PlusIcon
@@ -205,7 +215,23 @@ export default function EventPage() {
               Add every name this guest goes by — it helps avoid inviting the same
               person twice.
             </p>
-            <GuestForm guests={guests} onAdd={handleAddGuest} onDone={closePanel} />
+            <GuestForm guests={guests} onSubmit={handleAddGuest} onDone={closePanel} />
+          </Panel>
+        )}
+        {panel.kind === 'edit' && (
+          <Panel
+            title={`Edit ${primaryName(panel.guest)}`}
+            onClose={closePanel}
+            testId="edit-guest-panel"
+          >
+            <GuestForm
+              // Remount when a different guest is picked so the prefill resets.
+              key={panel.guest.id}
+              guests={guests}
+              initial={panel.guest}
+              onSubmit={(input) => handleUpdateGuest(panel.guest.id, input)}
+              onDone={closePanel}
+            />
           </Panel>
         )}
         {panel.kind === 'relation' && (
@@ -263,7 +289,8 @@ export default function EventPage() {
             relations={relations}
             onDelete={handleDeleteGuest}
             onConnect={(guest) => setPanel({ kind: 'relation', fromGuest: guest })}
-            connectDisabled={panel.kind === 'guest'}
+            onEdit={(guest) => setPanel({ kind: 'edit', guest })}
+            actionsDisabled={panel.kind === 'guest'}
           />
           {guests.length === 0 && (
             <button

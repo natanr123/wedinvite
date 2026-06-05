@@ -6,11 +6,15 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  Unique,
 } from 'typeorm';
 import { Event } from './event.entity';
 import { GuestName } from './guest-name.entity';
 
+// Named exactly like in the AddGuestNamePairs migration: local synchronize
+// must recognize it (guest_name_pairs' composite FK depends on this index).
 @Entity('guests')
+@Unique('UQ_guests_event_id_id', ['eventId', 'id'])
 export class Guest {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

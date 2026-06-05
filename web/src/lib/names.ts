@@ -7,6 +7,11 @@ function byKind(guest: Guest, kind: 'first' | 'last'): string[] {
     .map((n) => n.value);
 }
 
+/** All names of one kind, in position order (used to prefill the edit form). */
+export function nameValues(guest: Guest, kind: 'first' | 'last'): string[] {
+  return byKind(guest, kind);
+}
+
 /** Primary display name: first first-name + first last-name. */
 export function primaryName(guest: Guest): string {
   const [first] = byKind(guest, 'first');

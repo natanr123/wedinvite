@@ -89,6 +89,7 @@ POST   /api/events                                {title, eventDate?}
 GET    /api/events/:id
 POST   /api/events/:eventId/guests                {firstNames[], lastNames[], phone?, address?}
 GET    /api/events/:eventId/guests
+PATCH  /api/events/:eventId/guests/:id          full replacement (names, phone, address)
 DELETE /api/events/:eventId/guests/:id
 GET    /api/events/:eventId/relation-types      → presets ∪ custom
 POST   /api/events/:eventId/relation-types      {label}

@@ -2,33 +2,46 @@
 
 import { useState } from 'react';
 import { ApiError } from '@/lib/api';
-import { findExactDuplicates, findPossibleDuplicates, primaryName } from '@/lib/names';
+import {
+  findExactDuplicates,
+  findPossibleDuplicates,
+  nameValues,
+  primaryName,
+} from '@/lib/names';
 import type { CreateGuestInput, Guest } from '@/lib/types';
 import ChipInput from './ChipInput';
 import { SparklesIcon } from './icons';
 
 interface GuestFormProps {
   guests: Guest[];
-  onAdd: (input: CreateGuestInput) => Promise<void>;
-  /** Called after a guest is added successfully (closes the panel). */
+  /** When set, the form edits this guest (prefilled, excluded from dup checks). */
+  initial?: Guest;
+  onSubmit: (input: CreateGuestInput) => Promise<void>;
+  /** Called after a successful submit (closes the panel). */
   onDone?: () => void;
 }
 
 const inputClass =
   'w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm outline-none placeholder:text-stone-400 focus:border-rose-400 focus:ring-2 focus:ring-rose-100';
 
-export default function GuestForm({ guests, onAdd, onDone }: GuestFormProps) {
-  const [firstNames, setFirstNames] = useState<string[]>([]);
-  const [lastNames, setLastNames] = useState<string[]>([]);
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
+export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFormProps) {
+  const [firstNames, setFirstNames] = useState<string[]>(
+    initial ? nameValues(initial, 'first') : [],
+  );
+  const [lastNames, setLastNames] = useState<string[]>(
+    initial ? nameValues(initial, 'last') : [],
+  );
+  const [phone, setPhone] = useState(initial?.phone ?? '');
+  const [address, setAddress] = useState(initial?.address ?? '');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // When editing, the guest's own names are not conflicts.
+  const others = initial ? guests.filter((guest) => guest.id !== initial.id) : guests;
   // Hard conflicts (the server rejects these with 409 — submit is blocked)
   // vs soft "looks similar" hints (still allowed).
-  const exactDuplicates = findExactDuplicates(guests, firstNames, lastNames);
-  const softDuplicates = findPossibleDuplicates(guests, firstNames, lastNames).filter(
+  const exactDuplicates = findExactDuplicates(others, firstNames, lastNames);
+  const softDuplicates = findPossibleDuplicates(others, firstNames, lastNames).filter(
     (guest) => !exactDuplicates.includes(guest),
   );
   // Only meaningful once a first name exists — a guest can't be created without one.
@@ -49,19 +62,25 @@ export default function GuestForm({ guests, onAdd, onDone }: GuestFormProps) {
     }
     setSaving(true);
     try {
-      await onAdd({
+      await onSubmit({
         firstNames,
         lastNames,
         phone: phone.trim() || undefined,
         address: address.trim() || undefined,
       });
-      setFirstNames([]);
-      setLastNames([]);
-      setPhone('');
-      setAddress('');
+      if (!initial) {
+        setFirstNames([]);
+        setLastNames([]);
+        setPhone('');
+        setAddress('');
+      }
       onDone?.();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to add guest');
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : `Failed to ${initial ? 'save' : 'add'} guest`,
+      );
     } finally {
       setSaving(false);
     }
@@ -159,7 +178,7 @@ export default function GuestForm({ guests, onAdd, onDone }: GuestFormProps) {
         data-testid="add-guest-button"
         className="w-full rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
       >
-        {saving ? 'Adding…' : 'Add guest'}
+        {saving ? 'Saving…' : initial ? 'Save changes' : 'Add guest'}
       </button>
     </form>
   );

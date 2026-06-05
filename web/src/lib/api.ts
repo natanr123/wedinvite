@@ -65,6 +65,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  updateGuest: (eventId: string, id: string, data: CreateGuestInput) =>
+    request<Guest>(`/events/${eventId}/guests/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
   deleteGuest: (eventId: string, id: string) =>
     request<void>(`/events/${eventId}/guests/${id}`, { method: 'DELETE' }),
 

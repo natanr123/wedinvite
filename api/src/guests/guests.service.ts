@@ -34,10 +34,10 @@ function isUniqueViolation(err: unknown): boolean {
 }
 
 /**
- * Materializes every normalized (first x last) combination of the freshly
- * created guest. The composite PK on guest_name_pairs is the hard
- * "no duplicate guests" constraint; guest_name_norm() (SQL) is the single
- * normalization authority — JS never computes norms.
+ * Materializes every normalized (first x last) combination of the guest.
+ * The composite PK on guest_name_pairs is the hard "no duplicate guests"
+ * constraint; guest_name_norm() (SQL) is the single normalization authority —
+ * JS never computes norms.
  */
 const INSERT_PAIRS = `
   INSERT INTO guest_name_pairs (event_id, first_norm, last_norm, guest_id)
@@ -47,11 +47,15 @@ const INSERT_PAIRS = `
     AND l.guest_id = $2 AND l.kind = 'last'
 `;
 
-/** Finds a guest already claiming any of the proposed name combinations. */
+/**
+ * Finds a guest already claiming any of the proposed name combinations,
+ * optionally ignoring one guest (the one being edited).
+ */
 const FIND_CONFLICT = `
   SELECT p.guest_id AS "guestId"
   FROM guest_name_pairs p
   WHERE p.event_id = $1::uuid
+    AND ($4::uuid IS NULL OR p.guest_id <> $4::uuid)
     AND (p.first_norm, p.last_norm) IN (
       SELECT guest_name_norm(f), guest_name_norm(l)
       FROM unnest($2::text[]) AS f, unnest($3::text[]) AS l
@@ -69,21 +73,10 @@ export class GuestsService {
 
   async create(eventId: string, dto: CreateGuestDto): Promise<Guest> {
     await this.eventsService.ensureExists(eventId);
-
-    const firstNames = cleanNames(dto.firstNames);
-    const lastNames = cleanNames(dto.lastNames);
-    if (firstNames.length === 0) {
-      throw new BadRequestException('At least one first name is required');
-    }
-    if (lastNames.length === 0) {
-      throw new BadRequestException('At least one last name is required');
-    }
+    const { firstNames, lastNames } = this.validateNames(dto);
 
     // Friendly pre-check; the pairs PK below is the race-proof authority.
     await this.throwIfConflicting(eventId, firstNames, lastNames);
-
-    const toNames = (values: string[], kind: NameKind) =>
-      values.map((value, position) => ({ kind, value, position }) as GuestName);
 
     try {
       return await this.guests.manager.transaction(async (manager) => {
@@ -92,7 +85,7 @@ export class GuestsService {
             eventId,
             phone: dto.phone?.trim() || null,
             address: dto.address?.trim() || null,
-            names: [...toNames(firstNames, 'first'), ...toNames(lastNames, 'last')],
+            names: this.buildNames(firstNames, lastNames),
           }),
         );
         await manager.query(INSERT_PAIRS, [eventId, guest.id]);
@@ -107,16 +100,77 @@ export class GuestsService {
     }
   }
 
+  /** Full replacement: names, phone and address are all set from the dto. */
+  async update(eventId: string, id: string, dto: CreateGuestDto): Promise<Guest> {
+    const existing = await this.guests.findOne({ where: { id, eventId } });
+    if (!existing) {
+      throw new NotFoundException(`Guest ${id} not found in event ${eventId}`);
+    }
+    const { firstNames, lastNames } = this.validateNames(dto);
+
+    // Friendly pre-check, ignoring the guest's own claimed combinations.
+    await this.throwIfConflicting(eventId, firstNames, lastNames, id);
+
+    try {
+      return await this.guests.manager.transaction(async (manager) => {
+        await manager.getRepository(GuestName).delete({ guestId: id });
+        await manager.query('DELETE FROM guest_name_pairs WHERE guest_id = $1', [id]);
+        await manager.getRepository(Guest).save({
+          id,
+          phone: dto.phone?.trim() || null,
+          address: dto.address?.trim() || null,
+        });
+        await manager
+          .getRepository(GuestName)
+          .insert(this.buildNames(firstNames, lastNames).map((n) => ({ ...n, guestId: id })));
+        await manager.query(INSERT_PAIRS, [eventId, id]);
+        return manager.getRepository(Guest).findOneOrFail({
+          where: { id },
+          relations: { names: true },
+          order: { names: { kind: 'ASC', position: 'ASC' } },
+        });
+      });
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        await this.throwIfConflicting(eventId, firstNames, lastNames, id);
+      }
+      throw err;
+    }
+  }
+
+  private validateNames(dto: CreateGuestDto): {
+    firstNames: string[];
+    lastNames: string[];
+  } {
+    const firstNames = cleanNames(dto.firstNames);
+    const lastNames = cleanNames(dto.lastNames);
+    if (firstNames.length === 0) {
+      throw new BadRequestException('At least one first name is required');
+    }
+    if (lastNames.length === 0) {
+      throw new BadRequestException('At least one last name is required');
+    }
+    return { firstNames, lastNames };
+  }
+
+  private buildNames(firstNames: string[], lastNames: string[]): GuestName[] {
+    const toNames = (values: string[], kind: NameKind) =>
+      values.map((value, position) => ({ kind, value, position }) as GuestName);
+    return [...toNames(firstNames, 'first'), ...toNames(lastNames, 'last')];
+  }
+
   /** Throws 409 naming the existing guest when any name combination is taken. */
   private async throwIfConflicting(
     eventId: string,
     firstNames: string[],
     lastNames: string[],
+    excludeGuestId: string | null = null,
   ): Promise<void> {
     const rows: { guestId: string }[] = await this.guests.query(FIND_CONFLICT, [
       eventId,
       firstNames,
       lastNames,
+      excludeGuestId,
     ]);
     if (rows.length === 0) return;
 

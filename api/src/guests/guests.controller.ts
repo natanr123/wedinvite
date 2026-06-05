@@ -6,6 +6,7 @@ import {
   HttpCode,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
 } from '@nestjs/common';
 import { Guest } from '../entities/guest.entity';
@@ -27,6 +28,16 @@ export class GuestsController {
   @Get()
   findAll(@Param('eventId', ParseUUIDPipe) eventId: string): Promise<Guest[]> {
     return this.guestsService.findAll(eventId);
+  }
+
+  /** Full replacement of names + contact details. */
+  @Patch(':id')
+  update(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateGuestDto,
+  ): Promise<Guest> {
+    return this.guestsService.update(eventId, id, dto);
   }
 
   @Delete(':id')

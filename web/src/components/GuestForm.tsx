@@ -94,7 +94,7 @@ export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFo
           values={firstNames}
           onChange={setFirstNames}
           placeholder="Dana, Dani…"
-          hint="Press Enter after each name — add nicknames too"
+          hint="Enter adds a name · drag the ★ primary to reorder"
           testId="first-names-input"
         />
         <ChipInput
@@ -102,7 +102,7 @@ export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFo
           values={lastNames}
           onChange={setLastNames}
           placeholder="Cohen, Levi…"
-          hint="Married, maiden, … all of them"
+          hint="Married, maiden, … the ★ first one is displayed"
           testId="last-names-input"
         />
       </div>

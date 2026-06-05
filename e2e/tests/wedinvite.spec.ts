@@ -47,6 +47,9 @@ async function openGuestPanel(page: Page) {
 test('creates an event from the home page and lands on its dashboard', async ({ page }) => {
   const title = `E2E Wedding ${Date.now()}`;
   await page.goto('/');
+  // "Your events" leaves its loading state only after hydration + effects —
+  // interacting earlier can hit a not-yet-hydrated form (dev server under load).
+  await expect(page.getByText('Loading…')).toHaveCount(0);
   await page.getByTestId('event-title-input').fill(title);
   await page.getByTestId('event-date-input').fill('2027-05-20');
   await page.getByTestId('create-event-button').click();
@@ -243,9 +246,9 @@ test('edits a guest from their card (same inline panel as the add form)', async 
   const panel = page.getByTestId('edit-guest-panel');
   await expect(panel).toBeVisible();
   await expect(panel).toContainText('Edit Dana Cohen');
-  // Prefilled chips — each has its own remove button.
-  await expect(panel.getByRole('button', { name: 'Remove Dana' })).toBeVisible();
-  await expect(panel.getByRole('button', { name: 'Remove Cohen' })).toBeVisible();
+  // Prefilled chips.
+  await expect(panel.getByTestId('chip-Dana')).toBeVisible();
+  await expect(panel.getByTestId('chip-Cohen')).toBeVisible();
 
   // Add a nickname and a phone, save.
   await addChip(page, 'first-names-input', 'Dani');
@@ -257,6 +260,35 @@ test('edits a guest from their card (same inline panel as the add form)', async 
   await expect(card).toHaveCount(1);
   await expect(card).toContainText('Dani');
   await expect(card).toContainText('050-7654321');
+});
+
+test('drag a name chip to the front to make it the primary name', async ({
+  page,
+  request,
+}) => {
+  const event = await createEvent(request, `Reorder ${Date.now()}`);
+  await createGuest(request, event.id, ['Dana', 'Dani'], ['Cohen']);
+  await page.goto(`/events/${event.id}`);
+
+  await page.getByRole('button', { name: 'Edit Dana Cohen' }).click();
+  const source = page.getByTestId('chip-Dani');
+  const target = page.getByTestId('chip-Dana');
+  const sb = (await source.boundingBox())!;
+  const tb = (await target.boundingBox())!;
+  // Stepped pointer drag — dnd-kit tracks collisions from move events.
+  await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(tb.x + 4, tb.y + tb.height / 2, { steps: 15 });
+  await page.mouse.up();
+
+  // The live preview reflects the new primary immediately…
+  await expect(page.getByTestId('edit-guest-panel')).toContainText(
+    'Will appear as Dani Cohen',
+  );
+  // …and saving persists the order (position 0 = primary).
+  await page.getByTestId('add-guest-button').click();
+  await expect(page.getByTestId('edit-guest-panel')).toHaveCount(0);
+  await expect(page.getByTestId('guest-card')).toContainText('Dani Cohen');
 });
 
 test('editing a guest cannot steal another guest\'s name combination', async ({

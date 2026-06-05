@@ -1,5 +1,8 @@
 /** Built-in relation type presets, always offered alongside the event's custom types. */
-export const PRESET_CONNECTION_TYPES: readonly string[] = [
+export const PRESET_RELATION_TYPES: readonly string[] = [
+  // The couple first — it's a wedding app ("Natan is Fiancé of Efrat").
+  'Fiancé',
+  'Fiancée',
   'Sister',
   'Brother',
   'Mother',
@@ -19,5 +22,5 @@ export const PRESET_CONNECTION_TYPES: readonly string[] = [
 
 export function isPresetType(label: string): boolean {
   const key = label.trim().toLowerCase();
-  return PRESET_CONNECTION_TYPES.some((p) => p.toLowerCase() === key);
+  return PRESET_RELATION_TYPES.some((p) => p.toLowerCase() === key);
 }

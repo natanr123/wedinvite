@@ -11,7 +11,7 @@ import { Relation } from '../entities/relation.entity';
 import { Guest } from '../entities/guest.entity';
 import { EventsService } from '../events/events.service';
 import { CreateRelationDto } from './dto/create-relation.dto';
-import { isPresetType, PRESET_CONNECTION_TYPES } from './presets';
+import { isPresetType, PRESET_RELATION_TYPES } from './presets';
 
 export interface RelationTypesResponse {
   presets: string[];
@@ -37,7 +37,7 @@ export class RelationsService {
       order: { label: 'ASC' },
     });
     return {
-      presets: [...PRESET_CONNECTION_TYPES],
+      presets: [...PRESET_RELATION_TYPES],
       custom: custom.map((t) => t.label).filter((label) => !isPresetType(label)),
     };
   }
@@ -53,7 +53,7 @@ export class RelationsService {
       throw new BadRequestException('Relation type label must not be empty');
     }
 
-    const preset = PRESET_CONNECTION_TYPES.find(
+    const preset = PRESET_RELATION_TYPES.find(
       (p) => p.toLowerCase() === label.toLowerCase(),
     );
     if (preset) {

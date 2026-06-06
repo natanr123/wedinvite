@@ -53,26 +53,36 @@ export default function DebugConsole() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const flag = params.get('debug');
+    let disabled = flag === '0';
     try {
       if (flag === '1') localStorage.setItem(FLAG, '1');
       if (flag === '0') localStorage.setItem(FLAG, '0');
       // Default ON for now — only an explicit '0' disables.
-      if (localStorage.getItem(FLAG) === '0' || loaded) return;
+      disabled = localStorage.getItem(FLAG) === '0';
     } catch {
-      return; // storage blocked — debug mode unavailable
+      // storage blocked (private mode) — keep the default-ON behavior
     }
+    if (disabled || loaded) return;
     loaded = true;
-    void import('eruda').then(({ default: eruda }) => {
-      eruda.init();
-      // Replay errors captured before the bundle finished loading.
-      const early = (window as { __earlyErrors?: EarlyError[] }).__earlyErrors;
-      if (early?.length) {
-        console.error(`[debug] ${early.length} error(s) captured before devtools loaded:`);
-        for (const err of early) {
-          console.error(`[early ${err.type}]`, err.message, err.source ?? '');
+    void import('eruda')
+      .then(({ default: eruda }) => {
+        eruda.init();
+        // Replay errors captured before the bundle finished loading.
+        const early = (window as { __earlyErrors?: EarlyError[] }).__earlyErrors;
+        if (early?.length) {
+          console.error(`[debug] ${early.length} error(s) captured before devtools loaded:`);
+          for (const err of early) {
+            console.error(`[early ${err.type}]`, err.message, err.source ?? '');
+          }
         }
-      }
-    });
+      })
+      .catch((err: unknown) => {
+        loaded = false;
+        reportClientError({
+          kind: 'eruda-load-failed',
+          message: err instanceof Error ? err.message : String(err),
+        });
+      });
   }, []);
   return null;
 }

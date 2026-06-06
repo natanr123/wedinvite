@@ -14,13 +14,14 @@ interface EarlyError {
 /**
  * On-device devtools for debugging on phones (no desktop devtools needed).
  *
- *   open <site>?debug=1  → floating gear button: console, network, elements…
- *   open <site>?debug=0  → turn it off again
+ * Currently ON BY DEFAULT (temporary, while hunting a device-specific issue).
+ *
+ *   open <site>?debug=0  → turn it off (persists)
+ *   open <site>?debug=1  → turn it back on
  *
  * The flag persists in localStorage so it survives navigation/reloads.
- * Loaded dynamically — zero cost for normal visitors. Errors that happened
- * before this component mounted are collected by the inline trap in
- * layout.tsx and replayed into the console here.
+ * Loaded dynamically. Errors that happened before this component mounted are
+ * collected by the inline trap in layout.tsx and replayed into the console.
  */
 export default function DebugConsole() {
   useEffect(() => {
@@ -28,8 +29,9 @@ export default function DebugConsole() {
     const flag = params.get('debug');
     try {
       if (flag === '1') localStorage.setItem(FLAG, '1');
-      if (flag === '0') localStorage.removeItem(FLAG);
-      if (localStorage.getItem(FLAG) !== '1' || loaded) return;
+      if (flag === '0') localStorage.setItem(FLAG, '0');
+      // Default ON for now — only an explicit '0' disables.
+      if (localStorage.getItem(FLAG) === '0' || loaded) return;
     } catch {
       return; // storage blocked — debug mode unavailable
     }

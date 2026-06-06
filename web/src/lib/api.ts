@@ -1,3 +1,4 @@
+import { reportClientError } from './report';
 import type {
   Relation,
   RelationTypes,
@@ -26,9 +27,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...init,
+      // no-store: live data, and conditional requests caused some mobile
+      // browsers to surface raw 304s to fetch(), which read as failures.
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/json', ...init?.headers },
     });
-  } catch {
+  } catch (err) {
+    reportClientError({
+      kind: 'fetch-failed',
+      path,
+      message: err instanceof Error ? err.message : String(err),
+    });
     throw new ApiError(0, 'Cannot reach the server — is the API running?');
   }
   if (!res.ok) {
@@ -45,6 +54,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       }
     } catch {
       // non-JSON error body — keep the status text
+    }
+    // 4xx are expected app flow (validation, conflicts); anything else is an
+    // anomaly worth reporting (5xx, or oddities like raw 304s from caches).
+    if (res.status < 400 || res.status >= 500) {
+      reportClientError({ kind: 'api-bad-status', path, status: res.status, message });
     }
     throw new ApiError(res.status, message, details);
   }

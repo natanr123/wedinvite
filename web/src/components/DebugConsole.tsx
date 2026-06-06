@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
+import { reportClientError } from '@/lib/report';
 
 const FLAG = 'wedinvite.debug';
 let loaded = false;
+let reporting = false;
 
 interface EarlyError {
   type: string;
@@ -24,6 +26,30 @@ interface EarlyError {
  * collected by the inline trap in layout.tsx and replayed into the console.
  */
 export default function DebugConsole() {
+  // Error REPORTING is always on (independent of the devtools overlay):
+  // ship load-time + live window errors to the same-origin /api/log sink.
+  useEffect(() => {
+    if (reporting) return;
+    reporting = true;
+    const early = (window as { __earlyErrors?: EarlyError[] }).__earlyErrors;
+    for (const err of early ?? []) {
+      reportClientError({ kind: `early-${err.type}`, message: err.message, source: err.source });
+    }
+    window.addEventListener('error', (e) =>
+      reportClientError({
+        kind: 'window-error',
+        message: String(e.error?.stack ?? e.message),
+        source: `${e.filename ?? ''}:${e.lineno ?? ''}`,
+      }),
+    );
+    window.addEventListener('unhandledrejection', (e) =>
+      reportClientError({
+        kind: 'unhandledrejection',
+        message: String((e.reason as Error | undefined)?.stack ?? e.reason),
+      }),
+    );
+  }, []);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const flag = params.get('debug');

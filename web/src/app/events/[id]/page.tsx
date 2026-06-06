@@ -12,6 +12,7 @@ import { CalendarIcon, PlusIcon } from '@/components/icons';
 import { api, ApiError } from '@/lib/api';
 import { formatEventDate } from '@/lib/format';
 import { primaryName } from '@/lib/names';
+import { reportClientError } from '@/lib/report';
 import { removeEventId, saveEventId } from '@/lib/storage';
 import type {
   CreateGuestInput,
@@ -45,10 +46,11 @@ export default function EventPage() {
   const [types, setTypes] = useState<RelationTypes>({ presets: [], custom: [] });
   const [tab, setTab] = useState<Tab>('guests');
   const [panel, setPanel] = useState<PanelState>({ kind: 'none' });
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
+    async function load(attempt: number) {
       try {
         const [ev, gs, rs, ts] = await Promise.all([
           api.getEvent(id),
@@ -70,12 +72,25 @@ export default function EventPage() {
         if (err instanceof ApiError && (err.status === 404 || err.status === 400)) {
           removeEventId(id);
           setStatus('not-found');
-        } else {
-          setStatus('error');
+          return;
         }
+        // Transient blip (cold start, flaky mobile network)? One silent retry.
+        if (attempt === 0) {
+          setTimeout(() => {
+            if (!cancelled) void load(1);
+          }, 1500);
+          return;
+        }
+        const detail =
+          err instanceof ApiError
+            ? `${err.status || 'network'} — ${err.message}`
+            : String(err);
+        reportClientError({ kind: 'event-load-failed', eventId: id, detail });
+        setErrorDetail(detail);
+        setStatus('error');
       }
     }
-    void load();
+    void load(0);
     return () => {
       cancelled = true;
     };
@@ -150,8 +165,22 @@ export default function EventPage() {
         <p className="text-stone-600">
           {status === 'not-found'
             ? 'This event does not exist (anymore).'
-            : 'Could not load the event — is the API running?'}
+            : 'Could not load the event.'}
         </p>
+        {status === 'error' && errorDetail && (
+          <p className="max-w-md break-words text-xs text-stone-400" data-testid="error-detail">
+            {errorDetail}
+          </p>
+        )}
+        {status === 'error' && (
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
+          >
+            Try again
+          </button>
+        )}
         <Link href="/" className="text-rose-700 underline hover:text-rose-900">
           Back to home
         </Link>

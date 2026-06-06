@@ -30,6 +30,31 @@ export const metadata: Metadata = {
  * including crashes that white-screen old browsers before React mounts.
  */
 const earlyErrorTrap = `
+// Storage shim: some browsers (privacy modes, Mi Browser strict settings)
+// deny ALL storage access — window.localStorage throws SecurityError on read.
+// Install an in-memory stand-in so the app and the debug tools keep working
+// (event ids just won't persist across visits on such browsers).
+(function () {
+  function blocked(name) {
+    try { window[name].getItem('__probe__'); return false; } catch (e) { return true; }
+  }
+  function memoryStorage() {
+    var mem = {};
+    return {
+      getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+      setItem: function (k, v) { mem[k] = String(v); },
+      removeItem: function (k) { delete mem[k]; },
+      clear: function () { mem = {}; },
+      key: function (i) { return Object.keys(mem)[i] || null; },
+      get length() { return Object.keys(mem).length; }
+    };
+  }
+  ['localStorage', 'sessionStorage'].forEach(function (name) {
+    if (blocked(name)) {
+      try { Object.defineProperty(window, name, { value: memoryStorage(), configurable: true }); } catch (e) {}
+    }
+  });
+})();
 window.__earlyErrors = [];
 window.addEventListener('error', function (e) {
   window.__earlyErrors.push({

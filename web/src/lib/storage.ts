@@ -19,13 +19,23 @@ export function getSavedEventIds(): string[] {
 
 export function saveEventId(id: string): void {
   if (typeof window === 'undefined') return;
-  const ids = getSavedEventIds().filter((existing) => existing !== id);
-  ids.unshift(id); // most recent first
-  window.localStorage.setItem(KEY, JSON.stringify(ids));
+  try {
+    const ids = getSavedEventIds().filter((existing) => existing !== id);
+    ids.unshift(id); // most recent first
+    window.localStorage.setItem(KEY, JSON.stringify(ids));
+  } catch {
+    // Storage blocked (privacy mode) — remembering events is best-effort;
+    // the capability link itself still works. Must NEVER break the app
+    // (an unguarded setItem here once turned successful loads into errors).
+  }
 }
 
 export function removeEventId(id: string): void {
   if (typeof window === 'undefined') return;
-  const ids = getSavedEventIds().filter((existing) => existing !== id);
-  window.localStorage.setItem(KEY, JSON.stringify(ids));
+  try {
+    const ids = getSavedEventIds().filter((existing) => existing !== id);
+    window.localStorage.setItem(KEY, JSON.stringify(ids));
+  } catch {
+    // see saveEventId
+  }
 }

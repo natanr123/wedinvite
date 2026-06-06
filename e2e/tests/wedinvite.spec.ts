@@ -345,6 +345,38 @@ test('guest and relation panels are mutually exclusive (one action at a time)', 
   await expect(page.getByTestId('open-guest-panel')).toBeDisabled();
 });
 
+test('works when the browser denies ALL storage access (privacy modes)', async ({
+  browser,
+  request,
+}) => {
+  const event = await createEvent(request, `No storage ${Date.now()}`);
+  await createGuest(request, event.id, ['Dana'], ['Cohen']);
+
+  // Simulate Mi-Browser-style strict privacy: any localStorage access throws.
+  const context = await browser.newContext();
+  await context.addInitScript(() => {
+    const deny = () => {
+      throw new DOMException(
+        "Failed to read the 'localStorage' property from 'Window': Access is denied for this document.",
+        'SecurityError',
+      );
+    };
+    Object.defineProperty(window, 'localStorage', { get: deny, configurable: true });
+    Object.defineProperty(window, 'sessionStorage', { get: deny, configurable: true });
+  });
+  const page = await context.newPage();
+
+  // The event page must load normally — storage persistence is best-effort.
+  await page.goto(`http://localhost:3000/events/${event.id}`);
+  await expect(page.getByTestId('event-title')).toContainText('No storage');
+  await expect(page.getByTestId('guest-card')).toContainText('Dana Cohen');
+
+  // The debug overlay (default-on) must survive too, via the in-memory shim.
+  await expect(page.locator('.eruda-entry-btn')).toBeVisible();
+
+  await context.close();
+});
+
 test('shows not-found for an event that does not exist', async ({ page }) => {
   await page.goto('/events/00000000-0000-4000-8000-000000000000');
   await expect(page.getByRole('heading', { name: 'Event not found' })).toBeVisible();

@@ -16,14 +16,13 @@ interface EarlyError {
 /**
  * On-device devtools for debugging on phones (no desktop devtools needed).
  *
- * Currently ON BY DEFAULT (temporary, while hunting a device-specific issue).
+ * OPT-IN — off by default (so the public site ships no inspector overlay):
+ *   open <site>?debug=1  → turn it on (persists in localStorage)
+ *   open <site>?debug=0  → turn it back off
  *
- *   open <site>?debug=0  → turn it off (persists)
- *   open <site>?debug=1  → turn it back on
- *
- * The flag persists in localStorage so it survives navigation/reloads.
- * Loaded dynamically. Errors that happened before this component mounted are
- * collected by the inline trap in layout.tsx and replayed into the console.
+ * Error REPORTING (below) is always on and is separate from this overlay.
+ * Errors that happened before this component mounted are collected by the
+ * inline trap in layout.tsx and replayed into the console when enabled.
  */
 export default function DebugConsole() {
   // Error REPORTING is always on (independent of the devtools overlay):
@@ -53,16 +52,16 @@ export default function DebugConsole() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const flag = params.get('debug');
-    let disabled = flag === '0';
+    let enabled = flag === '1';
     try {
       if (flag === '1') localStorage.setItem(FLAG, '1');
-      if (flag === '0') localStorage.setItem(FLAG, '0');
-      // Default ON for now — only an explicit '0' disables.
-      disabled = localStorage.getItem(FLAG) === '0';
+      if (flag === '0') localStorage.removeItem(FLAG);
+      // Opt-in — only an explicit '1' (URL or stored) enables the overlay.
+      enabled = localStorage.getItem(FLAG) === '1';
     } catch {
-      // storage blocked (private mode) — keep the default-ON behavior
+      // storage blocked (private mode) — honor only the current URL flag
     }
-    if (disabled || loaded) return;
+    if (!enabled || loaded) return;
     loaded = true;
     void import('eruda')
       .then(({ default: eruda }) => {

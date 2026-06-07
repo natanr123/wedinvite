@@ -371,7 +371,9 @@ test('works when the browser denies ALL storage access (privacy modes)', async (
   await expect(page.getByTestId('event-title')).toContainText('No storage');
   await expect(page.getByTestId('guest-card')).toContainText('Dana Cohen');
 
-  // The debug overlay (default-on) must survive too, via the in-memory shim.
+  // The opt-in debug overlay must still work under denied storage (in-memory
+  // shim) when explicitly enabled with ?debug=1.
+  await page.goto(`http://localhost:3000/events/${event.id}?debug=1`);
   await expect(page.locator('.eruda-entry-btn')).toBeVisible();
 
   await context.close();

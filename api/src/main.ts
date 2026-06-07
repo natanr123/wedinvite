@@ -1,14 +1,21 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
+  });
   app.setGlobalPrefix('api');
+  // Cap request bodies — a guest is tiny; no legitimate payload is large.
+  app.useBodyParser('json', { limit: '64kb' });
+  // Behind Vercel's proxy — trust x-forwarded-for so the rate limiter and
+  // logs see the real client IP, not the edge IP.
+  app.set('trust proxy', 1);
   // Live data — never let browsers cache/revalidate. Express's default ETag +
   // max-age=0 produced 304s that some mobile browsers surface to fetch() as
   // failures (observed on Mi Browser), breaking the app for those users.
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
   app.getHttpAdapter().getInstance().set('etag', false);
   app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
     res.setHeader('Cache-Control', 'no-store');

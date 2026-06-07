@@ -20,5 +20,7 @@ playwright-report/
 .idea/
 .venv/
 
-# Supabase CLI local state
+# Platform CLI local state (may contain project ids / linkage)
+.vercel/
 supabase/.temp/
+supabase/.branches/

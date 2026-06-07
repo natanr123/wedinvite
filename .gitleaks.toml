@@ -1,0 +1,18 @@
+# gitleaks config for WedInvite.
+# Extends the default ruleset; allowlists one known false positive.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known non-secrets (placeholders in scaffold boilerplate)"
+regexTarget = "match"
+regexes = [
+  # Dummy CircleCI badge token from the default NestJS scaffold README
+  # (api/README.md history, commit 2956196) — points at github/nestjs/nest,
+  # grants nothing. Replaced in the working tree; remains in the root commit.
+  '''abc123def456''',
+]
+paths = [
+  '''.*\.example$''',          # committed env templates (placeholders only)
+  '''package-lock\.json$''',   # npm integrity hashes look like base64 secrets
+]

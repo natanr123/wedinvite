@@ -46,7 +46,7 @@ async function openGuestPanel(page: Page) {
 
 test('creates an event from the home page and lands on its dashboard', async ({ page }) => {
   const title = `E2E Wedding ${Date.now()}`;
-  await page.goto('/');
+  await page.goto('/en');
   // "Your events" leaves its loading state only after hydration + effects —
   // interacting earlier can hit a not-yet-hydrated form (dev server under load).
   await expect(page.getByText('Loading…')).toHaveCount(0);
@@ -59,7 +59,7 @@ test('creates an event from the home page and lands on its dashboard', async ({ 
   await expect(page.getByTestId('event-date')).toHaveText('May 20, 2027');
 
   // The event id is kept in localStorage, so it shows up on the home page.
-  await page.goto('/');
+  await page.goto('/en');
   await expect(
     page.getByTestId('saved-events').getByTestId('event-card').filter({ hasText: title }),
   ).toBeVisible();
@@ -67,7 +67,7 @@ test('creates an event from the home page and lands on its dashboard', async ({ 
 
 test('adds a guest with multiple first and last names', async ({ page, request }) => {
   const event = await createEvent(request, `Guests ${Date.now()}`);
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/en/events/${event.id}`);
 
   await openGuestPanel(page);
   await addChip(page, 'first-names-input', 'Dana');
@@ -93,7 +93,7 @@ test('adds a guest with multiple first and last names', async ({ page, request }
 
 test('requires at least one first name', async ({ page, request }) => {
   const event = await createEvent(request, `Validation ${Date.now()}`);
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/en/events/${event.id}`);
 
   await openGuestPanel(page);
   await addChip(page, 'last-names-input', 'Cohen');
@@ -111,7 +111,7 @@ test('hard-blocks a duplicate name combination (case-insensitive, any combo)', a
 }) => {
   const event = await createEvent(request, `Duplicates ${Date.now()}`);
   await createGuest(request, event.id, ['Dana', 'Dani'], ['Cohen', 'Levi']);
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/en/events/${event.id}`);
 
   // Match against the *secondary* names, in a different letter case — still a
   // claimed (first x last) combination, so the form blocks the submit.
@@ -158,7 +158,7 @@ test('the API rejects duplicate name combinations with 409 (DB-enforced)', async
 
 test('requires at least one last name', async ({ page, request }) => {
   const event = await createEvent(request, `Last name required ${Date.now()}`);
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/en/events/${event.id}`);
 
   await openGuestPanel(page);
   await addChip(page, 'first-names-input', 'Dana');
@@ -172,7 +172,7 @@ test('connects two guests with a preset type', async ({ page, request }) => {
   const event = await createEvent(request, `Relations ${Date.now()}`);
   await createGuest(request, event.id, ['Dana'], ['Cohen']);
   await createGuest(request, event.id, ['Noa'], ['Mizrahi']);
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/en/events/${event.id}`);
 
   // Relations are added from a guest's own card: that guest is side A.
   await openConnect(page, 'Dana Cohen');
@@ -196,7 +196,7 @@ test('rejects a duplicate relation, even reversed', async ({ page, request }) =>
     data: { guestAId: a.id, guestBId: b.id, typeLabel: 'Friend' },
   });
   expect(res.ok()).toBeTruthy();
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/en/events/${event.id}`);
 
   // Same pair reversed, same type — the API answers 409 and the UI surfaces it.
   // Add it from Noa's card (Noa is side A this time); the API treats it as the same pair.
@@ -216,7 +216,7 @@ test('adds a relation with a custom type and offers it again afterwards', async 
   const event = await createEvent(request, `Custom type ${Date.now()}`);
   await createGuest(request, event.id, ['Dana'], ['Cohen']);
   await createGuest(request, event.id, ['Noa'], ['Mizrahi']);
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/en/events/${event.id}`);
 
   await openConnect(page, 'Dana Cohen');
   await page.getByTestId('guest-b-select').selectOption({ label: 'Noa Mizrahi' });
@@ -239,7 +239,7 @@ test('edits a guest from their card (same inline panel as the add form)', async 
 }) => {
   const event = await createEvent(request, `Edit guest ${Date.now()}`);
   await createGuest(request, event.id, ['Dana'], ['Cohen']);
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/en/events/${event.id}`);
 
   // Clicking the card body opens the prefilled edit form.
   await page.getByRole('button', { name: 'Edit Dana Cohen' }).click();
@@ -268,7 +268,7 @@ test('drag a name chip to the front to make it the primary name', async ({
 }) => {
   const event = await createEvent(request, `Reorder ${Date.now()}`);
   await createGuest(request, event.id, ['Dana', 'Dani'], ['Cohen']);
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/en/events/${event.id}`);
 
   await page.getByRole('button', { name: 'Edit Dana Cohen' }).click();
   const source = page.getByTestId('chip-Dani');
@@ -306,7 +306,7 @@ test('editing a guest cannot steal another guest\'s name combination', async ({
   expect(res.status()).toBe(409);
 
   // UI-level: the edit form blocks the exact combination too.
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/en/events/${event.id}`);
   await page.getByRole('button', { name: 'Edit Noa Mizrahi' }).click();
   await addChip(page, 'first-names-input', 'Dana');
   await addChip(page, 'last-names-input', 'Cohen');
@@ -327,7 +327,7 @@ test('guest and relation panels are mutually exclusive (one action at a time)', 
   const event = await createEvent(request, `Exclusive ${Date.now()}`);
   await createGuest(request, event.id, ['Dana'], ['Cohen']);
   await createGuest(request, event.id, ['Noa'], ['Mizrahi']);
-  await page.goto(`/events/${event.id}`);
+  await page.goto(`/en/events/${event.id}`);
 
   // While creating a guest there is no way to create a relation:
   // every per-card Connect button is disabled.
@@ -380,7 +380,7 @@ test('works when the browser denies ALL storage access (privacy modes)', async (
 });
 
 test('shows not-found for an event that does not exist', async ({ page }) => {
-  await page.goto('/events/00000000-0000-4000-8000-000000000000');
+  await page.goto('/en/events/00000000-0000-4000-8000-000000000000');
   await expect(page.getByRole('heading', { name: 'Event not found' })).toBeVisible();
 });
 

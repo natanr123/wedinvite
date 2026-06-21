@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { LOCALES, pickLocaleFromHeader } from '@/lib/locale';
+import { DEFAULT_LOCALE, LOCALES } from '@/lib/locale';
 
 /**
  * Locale routing (the Next.js 16 App Router i18n pattern; `middleware` is now
- * `proxy`). Any path without a /he or /en prefix is redirected to one chosen
- * from Accept-Language, so the server always renders the correct <html
- * lang/dir>. A shared, locale-less capability link (e.g. /events/<uuid>) is
- * redirected gracefully to the visitor's language.
+ * `proxy`). Hebrew is the default: any path without a /he or /en prefix is
+ * redirected to /he regardless of the browser's Accept-Language. English stays
+ * one click away (the header toggle) or directly via an /en URL. A shared,
+ * locale-less capability link (e.g. /events/<uuid>) therefore opens in Hebrew.
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,8 +17,7 @@ export function proxy(request: NextRequest) {
   );
   if (hasLocale) return;
 
-  const locale = pickLocaleFromHeader(request.headers.get('accept-language'));
-  request.nextUrl.pathname = `/${locale}${pathname}`;
+  request.nextUrl.pathname = `/${DEFAULT_LOCALE}${pathname}`;
   return NextResponse.redirect(request.nextUrl);
 }
 

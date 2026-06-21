@@ -5,7 +5,7 @@ import { useTranslation } from '@/lib/i18n';
 import { aliasNames, primaryName } from '@/lib/names';
 import type { Guest, Relation } from '@/lib/types';
 import Avatar from './Avatar';
-import { LinkIcon, MapPinIcon, PhoneIcon, UsersIcon } from './icons';
+import { ChevronDownIcon, LinkIcon, MapPinIcon, PhoneIcon, UsersIcon } from './icons';
 
 interface GuestListProps {
   guests: Guest[];
@@ -18,8 +18,6 @@ interface GuestListProps {
   /** True while the "add guest" form is open — one action at a time. */
   actionsDisabled?: boolean;
 }
-
-const MAX_RELATION_CHIPS = 3;
 
 /**
  * The guest's relationships, phrased correctly from their point of view.
@@ -50,6 +48,8 @@ export default function GuestList({
   actionsDisabled = false,
 }: GuestListProps) {
   const { t, tType } = useTranslation();
+  // Per-guest "more info" toggle: the card shows only the name by default;
+  // aliases, contact and relations live behind the expander.
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   if (guests.length === 0) {
@@ -70,18 +70,19 @@ export default function GuestList({
         const name = primaryName(guest);
         const aliases = aliasNames(guest);
         const guestRelations = relationsOf(guest, relations);
-        const isExpanded = expanded[guest.id] ?? false;
-        const visibleRelations = isExpanded
-          ? guestRelations
-          : guestRelations.slice(0, MAX_RELATION_CHIPS);
-        const hiddenCount = guestRelations.length - MAX_RELATION_CHIPS;
+        const isOpen = expanded[guest.id] ?? false;
+        const hasExtra =
+          aliases.length > 0 ||
+          Boolean(guest.phone) ||
+          Boolean(guest.address) ||
+          guestRelations.length > 0;
         return (
           <li
             key={guest.id}
             data-testid="guest-card"
             className="rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm"
           >
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               {/* The card body is the edit affordance. */}
               <button
                 type="button"
@@ -90,83 +91,11 @@ export default function GuestList({
                 title={t('guest.editGuestTitle')}
                 disabled={actionsDisabled}
                 onClick={() => onEdit(guest)}
-                className="-m-1 flex min-w-0 items-start gap-3 rounded-lg p-1 text-start hover:bg-rose-50/60 disabled:pointer-events-none"
+                className="-m-1 flex min-w-0 items-center gap-3 rounded-lg p-1 text-start hover:bg-rose-50/60 disabled:pointer-events-none"
               >
                 <Avatar name={name} />
-                {/* spans only — <p>/<div> are invalid inside a <button> */}
-                <span className="block min-w-0">
-                  <span className="block font-medium text-stone-900">
-                    <bdi>{name}</bdi>
-                  </span>
-                  {aliases.length > 0 && (
-                    <span className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-stone-500">
-                      {t('guest.aka')}
-                      {aliases.map((alias) => (
-                        <span
-                          key={alias.id}
-                          className="rounded-full bg-stone-100 px-1.5 py-0.5 text-stone-600"
-                        >
-                          <bdi>{alias.value}</bdi>
-                        </span>
-                      ))}
-                    </span>
-                  )}
-                  {(guest.phone || guest.address) && (
-                    <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-stone-500">
-                      {guest.phone && (
-                        <span className="inline-flex items-center gap-1">
-                          <PhoneIcon className="h-3 w-3" />
-                          <bdi dir="ltr">{guest.phone}</bdi>
-                        </span>
-                      )}
-                      {guest.address && (
-                        <span className="inline-flex items-center gap-1">
-                          <MapPinIcon className="h-3 w-3" />
-                          <bdi>{guest.address}</bdi>
-                        </span>
-                      )}
-                    </span>
-                  )}
-                  {guestRelations.length > 0 && (
-                    <span className="mt-1.5 flex flex-wrap items-center gap-1">
-                      {visibleRelations.map((relation) => (
-                        <span
-                          key={relation.id}
-                          className="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50 px-2 py-0.5 text-xs text-rose-700"
-                        >
-                          <span className="font-medium">{tType(relation.type)}</span>
-                          <span className="text-rose-400">
-                            {relation.isSubject ? t('relation.of') : ':'}
-                          </span>
-                          <bdi>{relation.other}</bdi>
-                        </span>
-                      ))}
-                      {hiddenCount > 0 && (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          aria-expanded={isExpanded}
-                          onClick={(e) => {
-                            // Inside the edit button — don't open the editor.
-                            e.stopPropagation();
-                            setExpanded((prev) => ({ ...prev, [guest.id]: !isExpanded }));
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setExpanded((prev) => ({ ...prev, [guest.id]: !isExpanded }));
-                            }
-                          }}
-                          className="rounded-full px-1.5 py-0.5 text-xs text-stone-500 underline decoration-dotted hover:text-rose-700"
-                        >
-                          {isExpanded
-                            ? t('guest.showLess')
-                            : t('guest.showMore', { n: hiddenCount })}
-                        </span>
-                      )}
-                    </span>
-                  )}
+                <span className="block min-w-0 truncate font-medium text-stone-900">
+                  <bdi>{name}</bdi>
                 </span>
               </button>
               <div className="flex shrink-0 flex-col items-end gap-1.5">
@@ -191,6 +120,75 @@ export default function GuestList({
                 </button>
               </div>
             </div>
+
+            {hasExtra && (
+              <div className="mt-1.5">
+                <button
+                  type="button"
+                  data-testid="more-info-button"
+                  aria-expanded={isOpen}
+                  onClick={() =>
+                    setExpanded((prev) => ({ ...prev, [guest.id]: !isOpen }))
+                  }
+                  className="inline-flex items-center gap-1 rounded-md text-xs text-stone-500 hover:text-rose-700"
+                >
+                  <ChevronDownIcon
+                    className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                  />
+                  {isOpen ? t('guest.lessInfo') : t('guest.moreInfo')}
+                </button>
+
+                {isOpen && (
+                  <div data-testid="guest-extra" className="mt-2 space-y-1.5">
+                    {aliases.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1 text-xs text-stone-500">
+                        {t('guest.aka')}
+                        {aliases.map((alias) => (
+                          <span
+                            key={alias.id}
+                            className="rounded-full bg-stone-100 px-1.5 py-0.5 text-stone-600"
+                          >
+                            <bdi>{alias.value}</bdi>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {(guest.phone || guest.address) && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-stone-500">
+                        {guest.phone && (
+                          <span className="inline-flex items-center gap-1">
+                            <PhoneIcon className="h-3 w-3" />
+                            <bdi dir="ltr">{guest.phone}</bdi>
+                          </span>
+                        )}
+                        {guest.address && (
+                          <span className="inline-flex items-center gap-1">
+                            <MapPinIcon className="h-3 w-3" />
+                            <bdi>{guest.address}</bdi>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {guestRelations.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1">
+                        {guestRelations.map((relation) => (
+                          <span
+                            key={relation.id}
+                            className="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50 px-2 py-0.5 text-xs text-rose-700"
+                          >
+                            <span className="font-medium">{tType(relation.type)}</span>
+                            <span className="text-rose-400">
+                              {relation.isSubject ? t('relation.of') : ':'}
+                            </span>
+                            <bdi>{relation.other}</bdi>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </li>
         );
       })}

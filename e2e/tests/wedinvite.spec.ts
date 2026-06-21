@@ -84,6 +84,9 @@ test('adds a guest with multiple first and last names', async ({ page, request }
   const card = page.getByTestId('guest-card');
   await expect(card).toHaveCount(1);
   await expect(card).toContainText('Dana Cohen');
+  // Extra info (aka / contact / relations) is hidden until "more info" is opened.
+  await expect(page.getByTestId('guest-extra')).toHaveCount(0);
+  await card.getByTestId('more-info-button').click();
   await expect(card).toContainText('aka');
   await expect(card).toContainText('Dani');
   await expect(card).toContainText('Levi');
@@ -258,6 +261,7 @@ test('edits a guest from their card (same inline panel as the add form)', async 
   await expect(page.getByTestId('edit-guest-panel')).toHaveCount(0);
   const card = page.getByTestId('guest-card');
   await expect(card).toHaveCount(1);
+  await card.getByTestId('more-info-button').click();
   await expect(card).toContainText('Dani');
   await expect(card).toContainText('050-7654321');
 });

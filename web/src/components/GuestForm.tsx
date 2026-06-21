@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ApiError } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n';
 import {
   findExactDuplicates,
   findPossibleDuplicates,
@@ -25,6 +26,7 @@ const inputClass =
   'w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm outline-none placeholder:text-stone-400 focus:border-rose-400 focus:ring-2 focus:ring-rose-100';
 
 export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFormProps) {
+  const { t, tp } = useTranslation();
   const [firstNames, setFirstNames] = useState<string[]>(
     initial ? nameValues(initial, 'first') : [],
   );
@@ -53,11 +55,11 @@ export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFo
     e.preventDefault();
     setError(null);
     if (firstNames.length === 0) {
-      setError('Add at least one first name (press Enter to confirm a name)');
+      setError(t('guestForm.firstRequired'));
       return;
     }
     if (lastNames.length === 0) {
-      setError('Add at least one last name (press Enter to confirm a name)');
+      setError(t('guestForm.lastRequired'));
       return;
     }
     setSaving(true);
@@ -79,7 +81,7 @@ export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFo
       setError(
         err instanceof ApiError
           ? err.message
-          : `Failed to ${initial ? 'save' : 'add'} guest`,
+          : t(initial ? 'guestForm.saveFailed' : 'guestForm.addFailed'),
       );
     } finally {
       setSaving(false);
@@ -90,26 +92,27 @@ export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFo
     <form onSubmit={handleSubmit} className="space-y-3" data-testid="guest-form">
       <div className="grid gap-3 sm:grid-cols-2">
         <ChipInput
-          label="First names *"
+          label={t('guestForm.firstNames')}
           values={firstNames}
           onChange={setFirstNames}
-          placeholder="Dana, Dani…"
-          hint="Enter adds a name · drag the ★ primary to reorder"
+          placeholder={t('guestForm.firstPlaceholder')}
+          hint={t('guestForm.firstHint')}
           testId="first-names-input"
         />
         <ChipInput
-          label="Last names *"
+          label={t('guestForm.lastNames')}
           values={lastNames}
           onChange={setLastNames}
-          placeholder="Cohen, Levi…"
-          hint="Married, maiden, … the ★ first one is displayed"
+          placeholder={t('guestForm.lastPlaceholder')}
+          hint={t('guestForm.lastHint')}
           testId="last-names-input"
         />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="guest-phone">
-            Phone <span className="font-normal text-stone-400">(optional)</span>
+            {t('guestForm.phone')}{' '}
+            <span className="font-normal text-stone-400">{t('common.optional')}</span>
           </label>
           <input
             id="guest-phone"
@@ -117,12 +120,13 @@ export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFo
             className={inputClass}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="050-1234567"
+            placeholder={t('guestForm.phonePlaceholder')}
           />
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="guest-address">
-            Address <span className="font-normal text-stone-400">(optional)</span>
+            {t('guestForm.address')}{' '}
+            <span className="font-normal text-stone-400">{t('common.optional')}</span>
           </label>
           <input
             id="guest-address"
@@ -130,7 +134,7 @@ export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFo
             className={inputClass}
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            placeholder="1 Herzl St, Tel Aviv"
+            placeholder={t('guestForm.addressPlaceholder')}
           />
         </div>
       </div>
@@ -138,11 +142,10 @@ export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFo
       {preview && (
         <p className="flex items-center gap-1.5 text-xs text-stone-600">
           <SparklesIcon className="h-3.5 w-3.5 text-rose-400" />
-          Will appear as <span className="font-medium text-stone-900">{preview}</span>
+          {t('guestForm.willAppearAs')}{' '}
+          <span className="font-medium text-stone-900">{preview}</span>
           {extraNames > 0 && (
-            <span className="text-stone-400">
-              (+{extraNames} more {extraNames === 1 ? 'name' : 'names'})
-            </span>
+            <span className="text-stone-400">{tp('guestForm.morePreview', extraNames)}</span>
           )}
         </p>
       )}
@@ -152,9 +155,9 @@ export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFo
           data-testid="duplicate-blocked"
           className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
         >
-          ✕ {exactDuplicates.map((g) => primaryName(g)).join(', ')} is already on the
-          list — guests can’t share a name combination. Use a different name (nickname,
-          middle name…) to tell them apart.
+          {t('guestForm.duplicateBlocked', {
+            names: exactDuplicates.map((g) => primaryName(g)).join(', '),
+          })}
         </p>
       )}
       {softDuplicates.length > 0 && (
@@ -162,8 +165,9 @@ export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFo
           data-testid="duplicate-warning"
           className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
         >
-          ⚠ Looks similar to {softDuplicates.map((g) => primaryName(g)).join(', ')} —
-          double-check it’s a different person.
+          {t('guestForm.duplicateWarning', {
+            names: softDuplicates.map((g) => primaryName(g)).join(', '),
+          })}
         </p>
       )}
       {error && (
@@ -178,7 +182,11 @@ export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFo
         data-testid="add-guest-button"
         className="w-full rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
       >
-        {saving ? 'Saving…' : initial ? 'Save changes' : 'Add guest'}
+        {saving
+          ? t('common.saving')
+          : initial
+            ? t('guestForm.saveChanges')
+            : t('guestForm.submitAdd')}
       </button>
     </form>
   );

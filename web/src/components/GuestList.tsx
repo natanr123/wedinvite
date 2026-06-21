@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from '@/lib/i18n';
 import { aliasNames, primaryName } from '@/lib/names';
 import type { Guest, Relation } from '@/lib/types';
 import Avatar from './Avatar';
@@ -48,6 +49,7 @@ export default function GuestList({
   onEdit,
   actionsDisabled = false,
 }: GuestListProps) {
+  const { t, tType } = useTranslation();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   if (guests.length === 0) {
@@ -57,7 +59,7 @@ export default function GuestList({
         data-testid="guest-list-empty"
       >
         <UsersIcon className="h-8 w-8 text-rose-200" />
-        <p className="text-sm text-stone-500">No guests yet.</p>
+        <p className="text-sm text-stone-500">{t('guest.noGuests')}</p>
       </div>
     );
   }
@@ -84,25 +86,27 @@ export default function GuestList({
               <button
                 type="button"
                 data-testid="edit-guest-button"
-                aria-label={`Edit ${name}`}
-                title="Edit guest"
+                aria-label={t('guest.editAria', { name })}
+                title={t('guest.editGuestTitle')}
                 disabled={actionsDisabled}
                 onClick={() => onEdit(guest)}
-                className="-m-1 flex min-w-0 items-start gap-3 rounded-lg p-1 text-left hover:bg-rose-50/60 disabled:pointer-events-none"
+                className="-m-1 flex min-w-0 items-start gap-3 rounded-lg p-1 text-start hover:bg-rose-50/60 disabled:pointer-events-none"
               >
                 <Avatar name={name} />
                 {/* spans only — <p>/<div> are invalid inside a <button> */}
                 <span className="block min-w-0">
-                  <span className="block font-medium text-stone-900">{name}</span>
+                  <span className="block font-medium text-stone-900">
+                    <bdi>{name}</bdi>
+                  </span>
                   {aliases.length > 0 && (
                     <span className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-stone-500">
-                      aka
+                      {t('guest.aka')}
                       {aliases.map((alias) => (
                         <span
                           key={alias.id}
                           className="rounded-full bg-stone-100 px-1.5 py-0.5 text-stone-600"
                         >
-                          {alias.value}
+                          <bdi>{alias.value}</bdi>
                         </span>
                       ))}
                     </span>
@@ -112,13 +116,13 @@ export default function GuestList({
                       {guest.phone && (
                         <span className="inline-flex items-center gap-1">
                           <PhoneIcon className="h-3 w-3" />
-                          {guest.phone}
+                          <bdi dir="ltr">{guest.phone}</bdi>
                         </span>
                       )}
                       {guest.address && (
                         <span className="inline-flex items-center gap-1">
                           <MapPinIcon className="h-3 w-3" />
-                          {guest.address}
+                          <bdi>{guest.address}</bdi>
                         </span>
                       )}
                     </span>
@@ -130,11 +134,11 @@ export default function GuestList({
                           key={relation.id}
                           className="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50 px-2 py-0.5 text-xs text-rose-700"
                         >
-                          <span className="font-medium">{relation.type}</span>
+                          <span className="font-medium">{tType(relation.type)}</span>
                           <span className="text-rose-400">
-                            {relation.isSubject ? 'of' : ':'}
+                            {relation.isSubject ? t('relation.of') : ':'}
                           </span>
-                          {relation.other}
+                          <bdi>{relation.other}</bdi>
                         </span>
                       ))}
                       {hiddenCount > 0 && (
@@ -156,7 +160,9 @@ export default function GuestList({
                           }}
                           className="rounded-full px-1.5 py-0.5 text-xs text-stone-500 underline decoration-dotted hover:text-rose-700"
                         >
-                          {isExpanded ? 'show less' : `+${hiddenCount} more`}
+                          {isExpanded
+                            ? t('guest.showLess')
+                            : t('guest.showMore', { n: hiddenCount })}
                         </span>
                       )}
                     </span>
@@ -167,21 +173,21 @@ export default function GuestList({
                 <button
                   type="button"
                   data-testid="connect-button"
-                  aria-label={`Add a relation for ${name}`}
+                  aria-label={t('guest.connectAria', { name })}
                   disabled={actionsDisabled}
                   className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-40"
                   onClick={() => onConnect(guest)}
                 >
                   <LinkIcon className="h-3 w-3" />
-                  Connect
+                  {t('guest.connect')}
                 </button>
                 <button
                   type="button"
-                  aria-label={`Delete ${name}`}
+                  aria-label={t('guest.deleteAria', { name })}
                   className="text-xs text-stone-500 hover:text-red-600"
                   onClick={() => void onDelete(guest.id)}
                 >
-                  Remove
+                  {t('common.remove')}
                 </button>
               </div>
             </div>

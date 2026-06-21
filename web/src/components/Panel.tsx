@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 interface PanelProps {
   title: string;
@@ -15,6 +16,7 @@ interface PanelProps {
  * (the page keeps a single panel state), so actions stay mutually exclusive.
  */
 export default function Panel({ title, onClose, children, testId }: PanelProps) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export default function Panel({ title, onClose, children, testId }: PanelProps) 
         <h2 className="font-serif text-lg text-stone-900">{title}</h2>
         <button
           type="button"
-          aria-label="Close"
+          aria-label={t('common.close')}
           onClick={onClose}
           className="flex h-7 w-7 items-center justify-center rounded-full text-stone-500 hover:bg-rose-100 hover:text-stone-800"
         >

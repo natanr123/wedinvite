@@ -383,3 +383,36 @@ test('shows not-found for an event that does not exist', async ({ page }) => {
   await page.goto('/events/00000000-0000-4000-8000-000000000000');
   await expect(page.getByRole('heading', { name: 'Event not found' })).toBeVisible();
 });
+
+test('renders the Hebrew (RTL) UI at /he with translated content', async ({
+  browser,
+  request,
+}) => {
+  const event = await createEvent(request, `Hebrew ${Date.now()}`);
+  await createGuest(request, event.id, ['Dana'], ['Cohen']);
+
+  // A Hebrew-preferring browser; bare "/" must redirect to /he via the proxy.
+  const context = await browser.newContext({ locale: 'he-IL' });
+  const page = await context.newPage();
+
+  await page.goto('http://localhost:3000/');
+  await expect(page).toHaveURL(/\/he(\/|$)/);
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'he');
+  // Translated home copy ("Create a new event").
+  await expect(page.getByText('יצירת אירוע חדש')).toBeVisible();
+
+  // Event page: Hebrew date (month "מאי"), translated tab, data unchanged.
+  await page.goto(`http://localhost:3000/he/events/${event.id}`);
+  await expect(page.getByTestId('event-date')).toContainText('מאי');
+  await expect(page.getByTestId('tab-guests')).toContainText('אורחים');
+  await expect(page.getByTestId('guest-card')).toContainText('Dana Cohen');
+
+  // The language toggle switches to English (URL segment swap).
+  await page.getByTestId('language-toggle').getByText('EN').click();
+  await expect(page).toHaveURL(/\/en\/events\//);
+  await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+  await expect(page.getByTestId('tab-guests')).toContainText('Guests');
+
+  await context.close();
+});

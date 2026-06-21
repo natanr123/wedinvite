@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { CalendarIcon, ChevronRightIcon, HeartIcon } from '@/components/icons';
 import { api, ApiError } from '@/lib/api';
-import { formatEventDate } from '@/lib/format';
+import { useTranslation } from '@/lib/i18n';
 import { getSavedEventIds, removeEventId, saveEventId } from '@/lib/storage';
 import type { WeddingEvent } from '@/lib/types';
 
@@ -14,6 +14,7 @@ const inputClass =
 
 export default function Home() {
   const router = useRouter();
+  const { t, formatDate, localePath } = useTranslation();
   const [title, setTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [creating, setCreating] = useState(false);
@@ -53,7 +54,7 @@ export default function Home() {
     e.preventDefault();
     setError(null);
     if (!title.trim()) {
-      setError('Give your event a name');
+      setError(t('home.nameRequired'));
       return;
     }
     setCreating(true);
@@ -63,9 +64,9 @@ export default function Home() {
         eventDate: eventDate || undefined,
       });
       saveEventId(event.id);
-      router.push(`/events/${event.id}`);
+      router.push(localePath(`/events/${event.id}`));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to create the event');
+      setError(err instanceof ApiError ? err.message : t('home.createFailed'));
       setCreating(false);
     }
   };
@@ -79,18 +80,16 @@ export default function Home() {
             <HeartIcon className="h-6 w-6" />
             <span className="h-px w-12 bg-rose-200" aria-hidden />
           </div>
-          <h1 className="font-serif text-5xl text-rose-900">WedInvite</h1>
-          <p className="mt-3 text-stone-600">
-            Plan your guest list and who knows whom — no sign-up needed.
-          </p>
+          <h1 className="font-serif text-5xl text-rose-900">{t('brand.name')}</h1>
+          <p className="mt-3 text-stone-600">{t('home.tagline')}</p>
         </header>
 
         <section className="rounded-2xl border border-rose-100 bg-white/80 p-6 shadow-sm backdrop-blur">
-          <h2 className="mb-4 font-serif text-2xl text-stone-900">Create a new event</h2>
+          <h2 className="mb-4 font-serif text-2xl text-stone-900">{t('home.createHeading')}</h2>
           <form onSubmit={handleCreate} className="space-y-3" data-testid="create-event-form">
             <div>
               <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="event-title">
-                Event name *
+                {t('home.eventNameLabel')}
               </label>
               <input
                 id="event-title"
@@ -98,12 +97,13 @@ export default function Home() {
                 className={inputClass}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Dana & Noam's Wedding"
+                placeholder={t('home.eventNamePlaceholder')}
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="event-date">
-                Date <span className="font-normal text-stone-400">(optional)</span>
+                {t('home.dateLabel')}{' '}
+                <span className="font-normal text-stone-400">{t('common.optional')}</span>
               </label>
               <input
                 id="event-date"
@@ -125,40 +125,40 @@ export default function Home() {
               data-testid="create-event-button"
               className="w-full rounded-lg bg-rose-600 px-4 py-2.5 font-medium text-white hover:bg-rose-700 disabled:opacity-50"
             >
-              {creating ? 'Creating…' : 'Create event'}
+              {creating ? t('home.creating') : t('home.createButton')}
             </button>
           </form>
         </section>
 
         <section className="mt-8">
-          <h2 className="mb-3 font-serif text-2xl text-stone-900">Your events</h2>
+          <h2 className="mb-3 font-serif text-2xl text-stone-900">{t('home.yourEvents')}</h2>
           {loadingSaved ? (
-            <p className="text-sm text-stone-500">Loading…</p>
+            <p className="text-sm text-stone-500">{t('common.loading')}</p>
           ) : savedEvents.length === 0 ? (
             <p className="text-sm italic text-stone-500" data-testid="no-saved-events">
-              Events you create on this browser will show up here.
+              {t('home.noEvents')}
             </p>
           ) : (
             <ul className="space-y-2" data-testid="saved-events">
               {savedEvents.map((event) => (
                 <li key={event.id}>
                   <Link
-                    href={`/events/${event.id}`}
+                    href={localePath(`/events/${event.id}`)}
                     data-testid="event-card"
                     className="group flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-300 hover:shadow"
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium text-stone-900">
-                        {event.title}
+                        <bdi>{event.title}</bdi>
                       </span>
                       {event.eventDate && (
                         <span className="mt-0.5 flex items-center gap-1 text-xs text-stone-500">
                           <CalendarIcon className="h-3 w-3 text-rose-400" />
-                          {formatEventDate(event.eventDate)}
+                          {formatDate(event.eventDate)}
                         </span>
                       )}
                     </span>
-                    <ChevronRightIcon className="h-4 w-4 shrink-0 text-stone-300 transition group-hover:text-rose-500" />
+                    <ChevronRightIcon className="h-4 w-4 shrink-0 text-stone-300 transition group-hover:text-rose-500 rtl:-scale-x-100" />
                   </Link>
                 </li>
               ))}

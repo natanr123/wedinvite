@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n';
 import { primaryName } from '@/lib/names';
 import type { Relation } from '@/lib/types';
 import Avatar from './Avatar';
@@ -11,6 +12,7 @@ interface RelationListProps {
 }
 
 export default function RelationList({ relations, onDelete }: RelationListProps) {
+  const { t, tType } = useTranslation();
   if (relations.length === 0) {
     return (
       <div
@@ -18,7 +20,7 @@ export default function RelationList({ relations, onDelete }: RelationListProps)
         data-testid="relation-list-empty"
       >
         <LinkIcon className="h-8 w-8 text-rose-200" />
-        <p className="text-sm text-stone-500">No relations yet.</p>
+        <p className="text-sm text-stone-500">{t('relation.noRelations')}</p>
       </div>
     );
   }
@@ -38,25 +40,31 @@ export default function RelationList({ relations, onDelete }: RelationListProps)
             <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-stone-900">
               <span className="inline-flex items-center gap-1.5">
                 <Avatar name={nameA} size="sm" />
-                <span className="font-medium">{nameA}</span>
+                <span className="font-medium">
+                  <bdi>{nameA}</bdi>
+                </span>
               </span>
-              <span className="text-xs italic text-stone-500">is</span>
+              {t('relation.is') && (
+                <span className="text-xs italic text-stone-500">{t('relation.is')}</span>
+              )}
               <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
-                {relation.typeLabel}
+                <bdi>{tType(relation.typeLabel)}</bdi>
               </span>
-              <span className="text-xs italic text-stone-500">of</span>
+              <span className="text-xs italic text-stone-500">{t('relation.of')}</span>
               <span className="inline-flex items-center gap-1.5">
                 <Avatar name={nameB} size="sm" />
-                <span className="font-medium">{nameB}</span>
+                <span className="font-medium">
+                  <bdi>{nameB}</bdi>
+                </span>
               </span>
             </div>
             <button
               type="button"
-              aria-label={`Delete relation between ${nameA} and ${nameB}`}
+              aria-label={t('relation.deleteAria', { a: nameA, b: nameB })}
               className="shrink-0 text-xs text-stone-500 hover:text-red-600"
               onClick={() => void onDelete(relation.id)}
             >
-              Remove
+              {t('common.remove')}
             </button>
           </li>
         );

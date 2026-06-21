@@ -10,7 +10,19 @@ body {
   background: linear-gradient(160deg, #fff1f2 0%, #fffbeb 60%, #fff7ed 100%);
   background-attachment: fixed;
   color: #1c1917;
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  /* Geist has no Hebrew glyphs — fall through to the Hebrew sans per-glyph so
+     Hebrew names render even while the UI is in English. */
+  font-family: var(--font-sans), var(--font-hebrew-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Hebrew (RTL): prefer the Hebrew sans, and give headings a Hebrew serif
+   (Playfair has no Hebrew). dir is set on <html> by the i18n provider. */
+[dir="rtl"] body {
+  font-family: var(--font-hebrew-sans), var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+[dir="rtl"] .font-serif {
+  font-family: var(--font-hebrew-serif), var(--font-playfair), Georgia, serif;
 }
 
 /* Inline expand animation for the action panels. */

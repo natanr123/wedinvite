@@ -18,6 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useId, useState } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 interface ChipInputProps {
   label: string;
@@ -32,13 +33,14 @@ interface SortableChipProps {
   value: string;
   isPrimary: boolean;
   onRemove: () => void;
+  removeLabel: string;
 }
 
 /**
  * A draggable name chip. The first chip is the PRIMARY name (shown
  * everywhere in the app) — drag any chip to the front to promote it.
  */
-function SortableChip({ value, isPrimary, onRemove }: SortableChipProps) {
+function SortableChip({ value, isPrimary, onRemove, removeLabel }: SortableChipProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: value });
 
@@ -60,10 +62,10 @@ function SortableChip({ value, isPrimary, onRemove }: SortableChipProps) {
           ★
         </span>
       )}
-      {value}
+      <bdi>{value}</bdi>
       <button
         type="button"
-        aria-label={`Remove ${value}`}
+        aria-label={removeLabel}
         // preventDefault keeps the text input focused (blur would commit the
         // draft); stopPropagation keeps the drag sensor from activating.
         onPointerDown={(e) => {
@@ -94,6 +96,7 @@ export default function ChipInput({
   hint,
   testId,
 }: ChipInputProps) {
+  const { t } = useTranslation();
   const inputId = useId();
   const [draft, setDraft] = useState('');
   const sensors = useSensors(
@@ -146,6 +149,7 @@ export default function ChipInput({
                 value={value}
                 isPrimary={index === 0}
                 onRemove={() => onChange(values.filter((v) => v !== value))}
+                removeLabel={t('chipInput.removeAria', { value })}
               />
             ))}
           </SortableContext>
@@ -163,13 +167,13 @@ export default function ChipInput({
         {draft.trim() !== '' && (
           <button
             type="button"
-            aria-label={`Add name ${draft.trim()}`}
+            aria-label={t('chipInput.addNameAria', { value: draft.trim() })}
             // preventDefault keeps focus in the input so typing can continue
             onMouseDown={(e) => e.preventDefault()}
             onClick={commitDraft}
             className="shrink-0 rounded-md bg-rose-600 px-2 py-0.5 text-xs font-medium text-white hover:bg-rose-700"
           >
-            ↵ add
+            ↵ {t('chipInput.add')}
           </button>
         )}
       </div>

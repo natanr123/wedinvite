@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "title": "WedInvite",
+    "description": "תכננו את רשימת המוזמנים לחתונה ואת הקשרים בין המוזמנים"
+  },
+  "brand": {
+    "name": "WedInvite"
+  },
+  "common": {
+    "optional": "(לא חובה)",
+    "close": "סגירה",
+    "remove": "הסרה",
+    "saving": "שמירה…",
+    "loading": "טעינה…"
+  },
+  "nav": {
+    "allEvents": "כל האירועים",
+    "backToHome": "חזרה לדף הבית"
+  },
+  "home": {
+    "tagline": "תכננו את רשימת המוזמנים ומי מכיר את מי — בלי הרשמה.",
+    "createHeading": "יצירת אירוע חדש",
+    "eventNameLabel": "שם האירוע *",
+    "eventNamePlaceholder": "החתונה של דנה ונועם",
+    "dateLabel": "תאריך",
+    "creating": "יצירה…",
+    "createButton": "יצירת אירוע",
+    "yourEvents": "האירועים שלך",
+    "noEvents": "אירועים שתיצרו בדפדפן הזה יופיעו כאן.",
+    "nameRequired": "תנו שם לאירוע",
+    "createFailed": "יצירת האירוע נכשלה"
+  },
+  "event": {
+    "loadingEvent": "טעינת האירוע…",
+    "notFoundTitle": "האירוע לא נמצא",
+    "errorTitle": "משהו השתבש",
+    "notFoundBody": "האירוע הזה כבר לא קיים.",
+    "errorBody": "לא הצלחנו לטעון את האירוע.",
+    "tryAgain": "ניסיון נוסף",
+    "addGuest": "הוספת אורח",
+    "addGuestHint": "הוסיפו כל שם שהאורח מוכר בו — זה עוזר לא להזמין את אותו אדם פעמיים.",
+    "editGuest": "עריכת {name}",
+    "addRelationFor": "הוספת קשר עבור {name}",
+    "relationHint": "מי מכיר את מי — אחים, חברים, עמיתים לעבודה…",
+    "listsLabel": "רשימות האירוע",
+    "guestsTab": "אורחים",
+    "relationsTab": "קשרים",
+    "addFirstGuest": "הוספת האורח הראשון",
+    "connectTip": "טיפ: לחצו על {connect} בכרטיס של אורח כדי לקשר אותו למישהו."
+  },
+  "guest": {
+    "editGuestTitle": "עריכת אורח",
+    "editAria": "עריכת {name}",
+    "connect": "קשר",
+    "connectAria": "הוספת קשר עבור {name}",
+    "deleteAria": "מחיקת {name}",
+    "noGuests": "אין עדיין אורחים.",
+    "aka": "כינויים",
+    "showLess": "הצגת פחות",
+    "showMore": "ועוד {n}"
+  },
+  "guestForm": {
+    "firstNames": "שמות פרטיים *",
+    "lastNames": "שמות משפחה *",
+    "firstPlaceholder": "דנה, דני…",
+    "lastPlaceholder": "כהן, לוי…",
+    "firstHint": "הקישו Enter כדי להוסיף שם · גררו את ה★ כדי לקבוע שם ראשי",
+    "lastHint": "נשואה, נעורים, … ה★ הראשון הוא המוצג",
+    "phone": "טלפון",
+    "address": "כתובת",
+    "phonePlaceholder": "050-1234567",
+    "addressPlaceholder": "הרצל 1, תל אביב",
+    "firstRequired": "הוסיפו לפחות שם פרטי אחד (הקישו Enter לאישור שם)",
+    "lastRequired": "הוסיפו לפחות שם משפחה אחד (הקישו Enter לאישור שם)",
+    "willAppearAs": "יוצג כ־",
+    "morePreview": {
+      "one": "(ועוד שם אחד)",
+      "other": "(ועוד {n} שמות)"
+    },
+    "duplicateBlocked": "✕ {names} כבר ברשימה — אי אפשר לרשום שני אורחים עם אותו צירוף שמות. השתמשו בשם אחר (כינוי, שם אמצעי…) כדי להבחין ביניהם.",
+    "duplicateWarning": "⚠ השם דומה ל{names} — ודאו שמדובר באדם אחר.",
+    "saveChanges": "שמירת שינויים",
+    "submitAdd": "הוספת אורח",
+    "saveFailed": "שמירת האורח נכשלה",
+    "addFailed": "הוספת האורח נכשלה"
+  },
+  "chipInput": {
+    "removeAria": "הסרת {value}",
+    "addNameAria": "הוספת השם {value}",
+    "add": "הוספה"
+  },
+  "relationForm": {
+    "needAnotherGuest": "הוסיפו אורח נוסף כדי לקשר את {name} למישהו.",
+    "howKnows": "מה הקשר של {name} לאורח השני?",
+    "chooseType": "בחרו סוג…",
+    "yourTypes": "הסוגים שלך",
+    "presets": "מובנים",
+    "addOwnType": "+ הוספת סוג משלכם…",
+    "otherGuest": "האורח השני",
+    "chooseGuest": "בחרו אורח…",
+    "newTypeName": "שם הסוג החדש",
+    "newTypePlaceholder": "חבר מהצבא, חבר ילדות…",
+    "pickGuest": "בחרו את האורח השני",
+    "pickType": "בחרו או הקלידו סוג קשר",
+    "connecting": "יצירת קשר…",
+    "addRelation": "הוספת קשר",
+    "addFailed": "הוספת הקשר נכשלה"
+  },
+  "relation": {
+    "is": "",
+    "of": "של",
+    "noRelations": "אין עדיין קשרים.",
+    "deleteAria": "מחיקת הקשר בין {a} ל{b}"
+  }
+}

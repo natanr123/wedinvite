@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ApiError } from '@/lib/api';
+import { useTranslation } from '@/lib/i18n';
 import { primaryName } from '@/lib/names';
 import type { CreateRelationInput, Guest, RelationTypes } from '@/lib/types';
 import { HeartIcon, LinkIcon } from './icons';
@@ -33,6 +34,7 @@ export default function RelationForm({
   onAdd,
   onDone,
 }: RelationFormProps) {
+  const { t, tType } = useTranslation();
   const [guestBId, setGuestBId] = useState('');
   const [typeChoice, setTypeChoice] = useState('');
   const [customType, setCustomType] = useState('');
@@ -49,7 +51,7 @@ export default function RelationForm({
         data-testid="relation-form-disabled"
       >
         <LinkIcon className="h-4 w-4 text-rose-300" />
-        Add another guest first to connect {fromName} to someone.
+        {t('relationForm.needAnotherGuest', { name: fromName })}
       </div>
     );
   }
@@ -65,11 +67,11 @@ export default function RelationForm({
     setError(null);
     const typeLabel = typeChoice === CUSTOM_VALUE ? customType.trim() : typeChoice;
     if (!guestBId) {
-      setError('Pick the other guest');
+      setError(t('relationForm.pickGuest'));
       return;
     }
     if (!typeLabel) {
-      setError('Pick or type a relation type');
+      setError(t('relationForm.pickType'));
       return;
     }
     setSaving(true);
@@ -80,7 +82,7 @@ export default function RelationForm({
       setCustomType('');
       onDone?.();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to add relation');
+      setError(err instanceof ApiError ? err.message : t('relationForm.addFailed'));
     } finally {
       setSaving(false);
     }
@@ -91,7 +93,7 @@ export default function RelationForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="relation-type">
-            How does {fromName} know them?
+            {t('relationForm.howKnows', { name: fromName })}
           </label>
           <select
             id="relation-type"
@@ -100,9 +102,9 @@ export default function RelationForm({
             value={typeChoice}
             onChange={(e) => setTypeChoice(e.target.value)}
           >
-            <option value="">Choose a type…</option>
+            <option value="">{t('relationForm.chooseType')}</option>
             {types.custom.length > 0 && (
-              <optgroup label="Your types">
+              <optgroup label={t('relationForm.yourTypes')}>
                 {types.custom.map((label) => (
                   <option key={label} value={label}>
                     {label}
@@ -110,19 +112,19 @@ export default function RelationForm({
                 ))}
               </optgroup>
             )}
-            <optgroup label="Presets">
+            <optgroup label={t('relationForm.presets')}>
               {types.presets.map((label) => (
                 <option key={label} value={label}>
-                  {label}
+                  {tType(label)}
                 </option>
               ))}
             </optgroup>
-            <option value={CUSTOM_VALUE}>+ Add your own type…</option>
+            <option value={CUSTOM_VALUE}>{t('relationForm.addOwnType')}</option>
           </select>
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="relation-b">
-            Other guest
+            {t('relationForm.otherGuest')}
           </label>
           <select
             id="relation-b"
@@ -131,7 +133,7 @@ export default function RelationForm({
             value={guestBId}
             onChange={(e) => setGuestBId(e.target.value)}
           >
-            <option value="">Choose a guest…</option>
+            <option value="">{t('relationForm.chooseGuest')}</option>
             {others.map((guest) => (
               <option key={guest.id} value={guest.id}>
                 {primaryName(guest)}
@@ -144,7 +146,7 @@ export default function RelationForm({
       {typeChoice === CUSTOM_VALUE && (
         <div className="sm:max-w-xs">
           <label className="mb-1 block text-sm font-medium text-stone-700" htmlFor="custom-type">
-            New type name
+            {t('relationForm.newTypeName')}
           </label>
           <input
             id="custom-type"
@@ -152,7 +154,7 @@ export default function RelationForm({
             className={fieldClass}
             value={customType}
             onChange={(e) => setCustomType(e.target.value)}
-            placeholder="Army Buddy, Childhood Friend…"
+            placeholder={t('relationForm.newTypePlaceholder')}
             autoFocus
           />
         </div>
@@ -161,9 +163,17 @@ export default function RelationForm({
       {previewReady && (
         <p className="flex flex-wrap items-center gap-1.5 text-xs text-stone-600">
           <HeartIcon className="h-3.5 w-3.5 text-rose-400" />
-          <span className="font-medium text-stone-900">{fromName}</span>
-          is <span className="font-medium text-rose-700">{previewType}</span> of
-          <span className="font-medium text-stone-900">{otherName}</span>
+          <span className="font-medium text-stone-900">
+            <bdi>{fromName}</bdi>
+          </span>
+          {t('relation.is') && <span className="text-stone-500">{t('relation.is')}</span>}
+          <span className="font-medium text-rose-700">
+            <bdi>{tType(previewType)}</bdi>
+          </span>
+          <span className="text-stone-500">{t('relation.of')}</span>
+          <span className="font-medium text-stone-900">
+            <bdi>{otherName}</bdi>
+          </span>
         </p>
       )}
 
@@ -179,7 +189,7 @@ export default function RelationForm({
         data-testid="add-relation-button"
         className="w-full rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
       >
-        {saving ? 'Connecting…' : 'Add relation'}
+        {saving ? t('relationForm.connecting') : t('relationForm.addRelation')}
       </button>
     </form>
   );

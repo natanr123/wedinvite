@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "title": "WedInvite",
+    "description": "Plan your wedding guest list and the relations between guests"
+  },
+  "brand": {
+    "name": "WedInvite"
+  },
+  "common": {
+    "optional": "(optional)",
+    "close": "Close",
+    "remove": "Remove",
+    "saving": "Saving…",
+    "loading": "Loading…"
+  },
+  "nav": {
+    "allEvents": "All events",
+    "backToHome": "Back to home"
+  },
+  "home": {
+    "tagline": "Plan your guest list and who knows whom — no sign-up needed.",
+    "createHeading": "Create a new event",
+    "eventNameLabel": "Event name *",
+    "eventNamePlaceholder": "Dana & Noam's Wedding",
+    "dateLabel": "Date",
+    "creating": "Creating…",
+    "createButton": "Create event",
+    "yourEvents": "Your events",
+    "noEvents": "Events you create on this browser will show up here.",
+    "nameRequired": "Give your event a name",
+    "createFailed": "Failed to create the event"
+  },
+  "event": {
+    "loadingEvent": "Loading event…",
+    "notFoundTitle": "Event not found",
+    "errorTitle": "Something went wrong",
+    "notFoundBody": "This event does not exist (anymore).",
+    "errorBody": "Could not load the event.",
+    "tryAgain": "Try again",
+    "addGuest": "Add guest",
+    "addGuestHint": "Add every name this guest goes by — it helps avoid inviting the same person twice.",
+    "editGuest": "Edit {name}",
+    "addRelationFor": "Add relation for {name}",
+    "relationHint": "Who knows whom — siblings, friends, coworkers…",
+    "listsLabel": "Event lists",
+    "guestsTab": "Guests",
+    "relationsTab": "Relations",
+    "addFirstGuest": "Add your first guest",
+    "connectTip": "Tip: hit {connect} on a guest's card to link them to someone."
+  },
+  "guest": {
+    "editGuestTitle": "Edit guest",
+    "editAria": "Edit {name}",
+    "connect": "Connect",
+    "connectAria": "Add a relation for {name}",
+    "deleteAria": "Delete {name}",
+    "noGuests": "No guests yet.",
+    "aka": "aka",
+    "showLess": "show less",
+    "showMore": "+{n} more"
+  },
+  "guestForm": {
+    "firstNames": "First names *",
+    "lastNames": "Last names *",
+    "firstPlaceholder": "Dana, Dani…",
+    "lastPlaceholder": "Cohen, Levi…",
+    "firstHint": "Enter adds a name · drag the ★ primary to reorder",
+    "lastHint": "Married, maiden, … the ★ first one is displayed",
+    "phone": "Phone",
+    "address": "Address",
+    "phonePlaceholder": "050-1234567",
+    "addressPlaceholder": "1 Herzl St, Tel Aviv",
+    "firstRequired": "Add at least one first name (press Enter to confirm a name)",
+    "lastRequired": "Add at least one last name (press Enter to confirm a name)",
+    "willAppearAs": "Will appear as",
+    "morePreview": {
+      "one": "(+{n} more name)",
+      "other": "(+{n} more names)"
+    },
+    "duplicateBlocked": "✕ {names} is already on the list — guests can’t share a name combination. Use a different name (nickname, middle name…) to tell them apart.",
+    "duplicateWarning": "⚠ Looks similar to {names} — double-check it’s a different person.",
+    "saveChanges": "Save changes",
+    "submitAdd": "Add guest",
+    "saveFailed": "Failed to save guest",
+    "addFailed": "Failed to add guest"
+  },
+  "chipInput": {
+    "removeAria": "Remove {value}",
+    "addNameAria": "Add name {value}",
+    "add": "add"
+  },
+  "relationForm": {
+    "needAnotherGuest": "Add another guest first to connect {name} to someone.",
+    "howKnows": "How does {name} know them?",
+    "chooseType": "Choose a type…",
+    "yourTypes": "Your types",
+    "presets": "Presets",
+    "addOwnType": "+ Add your own type…",
+    "otherGuest": "Other guest",
+    "chooseGuest": "Choose a guest…",
+    "newTypeName": "New type name",
+    "newTypePlaceholder": "Army Buddy, Childhood Friend…",
+    "pickGuest": "Pick the other guest",
+    "pickType": "Pick or type a relation type",
+    "connecting": "Connecting…",
+    "addRelation": "Add relation",
+    "addFailed": "Failed to add relation"
+  },
+  "relation": {
+    "is": "is",
+    "of": "of",
+    "noRelations": "No relations yet.",
+    "deleteAria": "Delete relation between {a} and {b}"
+  }
+}

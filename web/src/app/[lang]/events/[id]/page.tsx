@@ -10,7 +10,7 @@ import RelationForm from '@/components/RelationForm';
 import RelationList from '@/components/RelationList';
 import { CalendarIcon, PlusIcon } from '@/components/icons';
 import { api, ApiError } from '@/lib/api';
-import { formatEventDate } from '@/lib/format';
+import { useTranslation } from '@/lib/i18n';
 import { primaryName } from '@/lib/names';
 import { reportClientError } from '@/lib/report';
 import { removeEventId, saveEventId } from '@/lib/storage';
@@ -39,6 +39,7 @@ type PanelState =
 
 export default function EventPage() {
   const { id } = useParams<{ id: string }>();
+  const { t, formatDate, localePath } = useTranslation();
   const [status, setStatus] = useState<Status>('loading');
   const [event, setEvent] = useState<WeddingEvent | null>(null);
   const [guests, setGuests] = useState<Guest[]>([]);
@@ -151,7 +152,7 @@ export default function EventPage() {
   if (status === 'loading') {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <p className="text-stone-500">Loading event…</p>
+        <p className="text-stone-500">{t('event.loadingEvent')}</p>
       </main>
     );
   }
@@ -160,12 +161,10 @@ export default function EventPage() {
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
         <h1 className="font-serif text-3xl text-stone-900">
-          {status === 'not-found' ? 'Event not found' : 'Something went wrong'}
+          {status === 'not-found' ? t('event.notFoundTitle') : t('event.errorTitle')}
         </h1>
         <p className="text-stone-600">
-          {status === 'not-found'
-            ? 'This event does not exist (anymore).'
-            : 'Could not load the event.'}
+          {status === 'not-found' ? t('event.notFoundBody') : t('event.errorBody')}
         </p>
         {status === 'error' && errorDetail && (
           <p className="max-w-md break-words text-xs text-stone-400" data-testid="error-detail">
@@ -178,11 +177,11 @@ export default function EventPage() {
             onClick={() => window.location.reload()}
             className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700"
           >
-            Try again
+            {t('event.tryAgain')}
           </button>
         )}
-        <Link href="/" className="text-rose-700 underline hover:text-rose-900">
-          Back to home
+        <Link href={localePath('/')} className="text-rose-700 underline hover:text-rose-900">
+          {t('nav.backToHome')}
         </Link>
       </main>
     );
@@ -193,18 +192,23 @@ export default function EventPage() {
       active ? 'bg-rose-600 text-white shadow-sm' : 'text-stone-600 hover:text-rose-700'
     }`;
 
+  const connectTip = t('event.connectTip').split('{connect}');
+
   return (
     <main className="flex-1 px-4 py-6 sm:py-10">
       <div className="mx-auto w-full max-w-xl">
         <header className="mb-5">
-          <Link href="/" className="text-sm text-rose-700 hover:underline">
-            ← All events
+          <Link href={localePath('/')} className="text-sm text-rose-700 hover:underline">
+            <span aria-hidden className="inline-block rtl:-scale-x-100">
+              ←
+            </span>{' '}
+            {t('nav.allEvents')}
           </Link>
           <h1
             className="mt-1.5 font-serif text-3xl text-rose-900 sm:text-4xl"
             data-testid="event-title"
           >
-            {event.title}
+            <bdi>{event.title}</bdi>
           </h1>
           {event.eventDate && (
             <p
@@ -212,7 +216,7 @@ export default function EventPage() {
               data-testid="event-date"
             >
               <CalendarIcon className="h-3.5 w-3.5 text-rose-400" />
-              {formatEventDate(event.eventDate)}
+              {formatDate(event.eventDate)}
             </p>
           )}
         </header>
@@ -234,22 +238,19 @@ export default function EventPage() {
             <PlusIcon
               className={`h-4 w-4 transition-transform ${panel.kind === 'guest' ? 'rotate-45' : ''}`}
             />
-            {panel.kind === 'guest' ? 'Close' : 'Add guest'}
+            {panel.kind === 'guest' ? t('common.close') : t('event.addGuest')}
           </button>
         </div>
 
         {panel.kind === 'guest' && (
-          <Panel title="Add guest" onClose={closePanel} testId="guest-panel">
-            <p className="mb-3 text-xs text-stone-500">
-              Add every name this guest goes by — it helps avoid inviting the same
-              person twice.
-            </p>
+          <Panel title={t('event.addGuest')} onClose={closePanel} testId="guest-panel">
+            <p className="mb-3 text-xs text-stone-500">{t('event.addGuestHint')}</p>
             <GuestForm guests={guests} onSubmit={handleAddGuest} onDone={closePanel} />
           </Panel>
         )}
         {panel.kind === 'edit' && (
           <Panel
-            title={`Edit ${primaryName(panel.guest)}`}
+            title={t('event.editGuest', { name: primaryName(panel.guest) })}
             onClose={closePanel}
             testId="edit-guest-panel"
           >
@@ -265,13 +266,11 @@ export default function EventPage() {
         )}
         {panel.kind === 'relation' && (
           <Panel
-            title={`Add relation for ${primaryName(panel.fromGuest)}`}
+            title={t('event.addRelationFor', { name: primaryName(panel.fromGuest) })}
             onClose={closePanel}
             testId="relation-panel"
           >
-            <p className="mb-3 text-xs text-stone-500">
-              Who knows whom — siblings, friends, coworkers…
-            </p>
+            <p className="mb-3 text-xs text-stone-500">{t('event.relationHint')}</p>
             <RelationForm
               // Remount when opened for a different guest so the form resets.
               key={panel.fromGuest.id}
@@ -286,7 +285,7 @@ export default function EventPage() {
 
         <div
           role="tablist"
-          aria-label="Event lists"
+          aria-label={t('event.listsLabel')}
           className="mb-4 flex rounded-full border border-rose-100 bg-white/80 p-1 backdrop-blur"
         >
           <button
@@ -297,7 +296,7 @@ export default function EventPage() {
             onClick={() => setTab('guests')}
             className={tabClass(tab === 'guests')}
           >
-            Guests <span data-testid="guest-count">({guests.length})</span>
+            {t('event.guestsTab')} <span data-testid="guest-count">({guests.length})</span>
           </button>
           <button
             type="button"
@@ -307,7 +306,8 @@ export default function EventPage() {
             onClick={() => setTab('relations')}
             className={tabClass(tab === 'relations')}
           >
-            Relations <span data-testid="relation-count">({relations.length})</span>
+            {t('event.relationsTab')}{' '}
+            <span data-testid="relation-count">({relations.length})</span>
           </button>
         </div>
 
@@ -327,7 +327,7 @@ export default function EventPage() {
               onClick={() => setPanel({ kind: 'guest' })}
               className="mx-auto block rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-rose-700"
             >
-              Add your first guest
+              {t('event.addFirstGuest')}
             </button>
           )}
         </div>
@@ -335,8 +335,9 @@ export default function EventPage() {
           <RelationList relations={relations} onDelete={handleDeleteRelation} />
           {relations.length === 0 && guests.length >= 2 && (
             <p className="mt-2 text-center text-xs text-stone-500">
-              Tip: hit <span className="font-medium text-rose-700">Connect</span> on a
-              guest&apos;s card to link them to someone.
+              {connectTip[0]}
+              <span className="font-medium text-rose-700">{t('guest.connect')}</span>
+              {connectTip[1] ?? ''}
             </p>
           )}
         </div>

@@ -56,8 +56,7 @@
     "deleteAria": "Delete {name}",
     "noGuests": "No guests yet.",
     "aka": "aka",
-    "moreInfo": "More info",
-    "lessInfo": "Less"
+    "details": "details"
   },
   "guestForm": {
     "firstNames": "First names *",

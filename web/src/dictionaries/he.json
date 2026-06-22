@@ -56,8 +56,7 @@
     "deleteAria": "מחיקת {name}",
     "noGuests": "אין עדיין אורחים.",
     "aka": "כינויים",
-    "moreInfo": "פרטים נוספים",
-    "lessInfo": "פחות"
+    "details": "פרטים"
   },
   "guestForm": {
     "firstNames": "שמות פרטיים *",

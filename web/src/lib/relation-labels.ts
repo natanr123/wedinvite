@@ -27,10 +27,24 @@ const HE_PRESET_LABELS: Record<string, string> = {
   Friend: 'חבר/ה',
   CoWorker: 'עמית/ה לעבודה',
   Neighbor: 'שכן/ה',
+  // Powers the Arrange board; already carries "of", so sentence renderers drop
+  // the trailing connector (see labelEndsWithConnector) to avoid "of of".
+  'Guest of': 'אורח/ת של',
 };
 
 /** Localize a relation type label for display (presets only; others pass through). */
 export function localizeRelationType(label: string, locale: Locale): string {
   if (locale === 'he') return HE_PRESET_LABELS[label] ?? label;
   return label;
+}
+
+/**
+ * True when a (localized) type label already ends with the "of" connector word
+ * ("Guest of", "אורח/ת של"), so the directional-sentence renderers shouldn't
+ * append the connector again.
+ */
+export function labelEndsWithConnector(localizedLabel: string, connector: string): boolean {
+  const label = localizedLabel.trim().toLowerCase();
+  const word = connector.trim().toLowerCase();
+  return word !== '' && (label === word || label.endsWith(` ${word}`));
 }

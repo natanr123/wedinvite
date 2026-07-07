@@ -383,6 +383,48 @@ test('works when the browser denies ALL storage access (privacy modes)', async (
   await context.close();
 });
 
+test('arranges guests into "Guest of" columns via tap-to-move', async ({ page, request }) => {
+  const event = await createEvent(request, `Arrange ${Date.now()}`);
+  // First two guests become the default base guests (the columns' subjects).
+  await createGuest(request, event.id, ['Natan'], ['Rubinstein']);
+  await createGuest(request, event.id, ['Rachel'], ['Ritterman']);
+  const dana = await createGuest(request, event.id, ['Dana'], ['Cohen']);
+  await page.goto(`/en/events/${event.id}`);
+
+  await page.getByTestId('tab-arrange').click();
+  await expect(page.getByTestId('arrange-board')).toBeVisible();
+
+  // First two guests are the two sides → 3 columns: Undecided, Natan, Rachel.
+  const columns = page.getByTestId('arrange-column');
+  await expect(columns).toHaveCount(3);
+  await expect(columns.nth(0)).toContainText('Undecided');
+  await expect(columns.nth(1)).toContainText('Natan');
+  await expect(columns.nth(2)).toContainText('Rachel');
+
+  // Dana (not a side) starts undecided.
+  const danaCard = page.locator(`[data-testid="arrange-card"][data-guest-id="${dana.id}"]`);
+  const undecided = columns.filter({ hasText: 'Undecided' });
+  await expect(undecided.locator(`[data-guest-id="${dana.id}"]`)).toHaveCount(1);
+
+  // Tap Dana, then the "Natan" column (touch fallback for drag-drop).
+  const natanCol = columns.filter({ hasText: 'Natan' });
+  await danaCard.click();
+  await natanCol.click();
+
+  // Dana re-buckets and a "Guest of" relation now exists.
+  await expect(natanCol.locator(`[data-guest-id="${dana.id}"]`)).toHaveCount(1);
+  await expect(undecided.locator(`[data-guest-id="${dana.id}"]`)).toHaveCount(0);
+  await expect(page.getByTestId('relation-count')).toHaveText('(1)');
+
+  // The relation reads "Dana Cohen Guest of Natan Rubinstein" (no doubled "of").
+  await page.getByTestId('tab-relations').click();
+  const row = page.getByTestId('relation-row');
+  await expect(row).toContainText('Dana Cohen');
+  await expect(row).toContainText('Guest of');
+  await expect(row).toContainText('Natan Rubinstein');
+  await expect(row).not.toContainText('of of');
+});
+
 test('shows not-found for an event that does not exist', async ({ page }) => {
   await page.goto('/en/events/00000000-0000-4000-8000-000000000000');
   await expect(page.getByRole('heading', { name: 'Event not found' })).toBeVisible();

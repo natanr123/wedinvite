@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import ArrangeBoard from '@/components/ArrangeBoard';
 import GuestForm from '@/components/GuestForm';
 import GuestList from '@/components/GuestList';
 import Panel from '@/components/Panel';
@@ -24,7 +25,7 @@ import type {
 } from '@/lib/types';
 
 type Status = 'loading' | 'ready' | 'not-found' | 'error';
-type Tab = 'guests' | 'relations';
+type Tab = 'guests' | 'relations' | 'arrange';
 
 /**
  * One action at a time: the add-guest, edit-guest or add-relation form is
@@ -309,6 +310,16 @@ export default function EventPage() {
             {t('event.relationsTab')}{' '}
             <span data-testid="relation-count">({relations.length})</span>
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'arrange'}
+            data-testid="tab-arrange"
+            onClick={() => setTab('arrange')}
+            className={tabClass(tab === 'arrange')}
+          >
+            {t('event.arrangeTab')}
+          </button>
         </div>
 
         {/* Both lists stay mounted; the inactive one is just hidden. */}
@@ -340,6 +351,15 @@ export default function EventPage() {
               {connectTip[1] ?? ''}
             </p>
           )}
+        </div>
+        <div className={tab === 'arrange' ? '' : 'hidden'}>
+          <ArrangeBoard
+            eventId={id}
+            guests={guests}
+            relations={relations}
+            onAdd={handleAddRelation}
+            onDelete={handleDeleteRelation}
+          />
         </div>
       </div>
     </main>

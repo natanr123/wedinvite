@@ -46,7 +46,8 @@
     "guestsTab": "Guests",
     "relationsTab": "Relations",
     "addFirstGuest": "Add your first guest",
-    "connectTip": "Tip: hit {connect} on a guest's card to link them to someone."
+    "connectTip": "Tip: hit {connect} on a guest's card to link them to someone.",
+    "arrangeTab": "Arrange"
   },
   "guest": {
     "editGuestTitle": "Edit guest",
@@ -110,5 +111,12 @@
     "of": "of",
     "noRelations": "No relations yet.",
     "deleteAria": "Delete relation between {a} and {b}"
+  },
+  "arrange": {
+    "intro": "Drag a guest to a column — or tap a guest, then a column — to sort which side they’re on.",
+    "undecided": "Undecided",
+    "emptyColumn": "No guests here",
+    "needGuests": "Add at least two guests to start sorting them.",
+    "moveFailed": "Couldn’t move the guest — try again."
   }
 }

@@ -1,5 +1,7 @@
 /** Built-in relation type presets, always offered alongside the event's custom types. */
 export const PRESET_RELATION_TYPES: readonly string[] = [
+  // "Guest of" powers the Arrange board (grouping guests under a base guest).
+  'Guest of',
   // The couple first — it's a wedding app ("Natan is Fiancé of Efrat").
   'Fiancé',
   'Fiancée',

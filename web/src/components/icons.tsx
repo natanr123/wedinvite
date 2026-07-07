@@ -96,6 +96,28 @@ export function ChevronRightIcon({ className }: { className?: string }) {
   );
 }
 
+export function ColumnsIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <rect x="3" y="3" width="7" height="18" rx="1" />
+      <rect x="14" y="3" width="7" height="18" rx="1" />
+    </Icon>
+  );
+}
+
+export function GripIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <circle cx="9" cy="6" r="1" />
+      <circle cx="15" cy="6" r="1" />
+      <circle cx="9" cy="12" r="1" />
+      <circle cx="15" cy="12" r="1" />
+      <circle cx="9" cy="18" r="1" />
+      <circle cx="15" cy="18" r="1" />
+    </Icon>
+  );
+}
+
 export function SparklesIcon({ className }: { className?: string }) {
   return (
     <Icon className={className}>

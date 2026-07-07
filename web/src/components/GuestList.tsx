@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
 import { aliasNames, primaryName } from '@/lib/names';
+import { labelEndsWithConnector } from '@/lib/relation-labels';
 import type { Guest, Relation } from '@/lib/types';
 import Avatar from './Avatar';
 import { ChevronDownIcon, LinkIcon, MapPinIcon, PhoneIcon, UsersIcon } from './icons';
@@ -172,18 +173,25 @@ export default function GuestList({
                 )}
                 {guestRelations.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1">
-                    {guestRelations.map((relation) => (
-                      <span
-                        key={relation.id}
-                        className="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50 px-2 py-0.5 text-xs text-rose-700"
-                      >
-                        <span className="font-medium">{tType(relation.type)}</span>
-                        <span className="text-rose-400">
-                          {relation.isSubject ? t('relation.of') : ':'}
+                    {guestRelations.map((relation) => {
+                      // "X is Guest of Y": on the subject's card append "of",
+                      // unless the label already ends with it ("Guest of").
+                      const connector = relation.isSubject
+                        ? labelEndsWithConnector(tType(relation.type), t('relation.of'))
+                          ? ''
+                          : t('relation.of')
+                        : ':';
+                      return (
+                        <span
+                          key={relation.id}
+                          className="inline-flex items-center gap-1 rounded-full border border-rose-100 bg-rose-50 px-2 py-0.5 text-xs text-rose-700"
+                        >
+                          <span className="font-medium">{tType(relation.type)}</span>
+                          {connector && <span className="text-rose-400">{connector}</span>}
+                          <bdi>{relation.other}</bdi>
                         </span>
-                        <bdi>{relation.other}</bdi>
-                      </span>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -2,6 +2,7 @@
 
 import { useTranslation } from '@/lib/i18n';
 import { primaryName } from '@/lib/names';
+import { labelEndsWithConnector } from '@/lib/relation-labels';
 import type { Relation } from '@/lib/types';
 import Avatar from './Avatar';
 import { LinkIcon } from './icons';
@@ -50,7 +51,9 @@ export default function RelationList({ relations, onDelete }: RelationListProps)
               <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
                 <bdi>{tType(relation.typeLabel)}</bdi>
               </span>
-              <span className="text-xs italic text-stone-500">{t('relation.of')}</span>
+              {!labelEndsWithConnector(tType(relation.typeLabel), t('relation.of')) && (
+                <span className="text-xs italic text-stone-500">{t('relation.of')}</span>
+              )}
               <span className="inline-flex items-center gap-1.5">
                 <Avatar name={nameB} size="sm" />
                 <span className="font-medium">

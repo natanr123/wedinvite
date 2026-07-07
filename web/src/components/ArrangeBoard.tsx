@@ -20,6 +20,8 @@ interface ArrangeBoardProps {
   onDelete: (relationId: string) => Promise<void>;
 }
 
+const UNDECIDED = 'undecided';
+
 /** Just the first name — the board's columns are labelled by side, not full name. */
 function firstNameOf(guest: Guest): string {
   return nameValues(guest, 'first')[0] ?? primaryName(guest);
@@ -29,8 +31,12 @@ function firstNameOf(guest: Guest): string {
  * A simple "which side is this guest on?" board. The event's first two guests
  * are the two sides; every other guest sits in one of three columns — Undecided,
  * <first guest>, or <second guest> — based on their "Guest of" relations.
- * Dragging (or tapping) a card into a column makes that guest a "Guest of" that
- * side exclusively (and clears the other side).
+ *
+ * Moves are optimistic and non-blocking: dropping (or tapping) a card moves it
+ * to the target column immediately, and the underlying relation add/delete
+ * requests fire in parallel in the background. The optimistic placement is
+ * reconciled against the server once the request settles (or reverted on error),
+ * so the board never freezes while a request is in flight.
  */
 export default function ArrangeBoard({
   eventId,
@@ -44,7 +50,10 @@ export default function ArrangeBoard({
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  // Optimistic column placement (guestId → column key) shown before the server
+  // confirms, plus the count of in-flight requests per guest for subtle feedback.
+  const [pending, setPending] = useState<Record<string, string>>({});
+  const [syncing, setSyncing] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
 
   const guestById = useMemo(() => new Map(guests.map((g) => [g.id, g])), [guests]);
@@ -56,45 +65,71 @@ export default function ArrangeBoard({
 
   // Undecided + one column per side.
   const columns = useMemo(
-    () => [{ key: 'undecided', baseId: null as string | null }, ...baseIds.map((id) => ({ key: id, baseId: id as string | null }))],
+    () => [{ key: UNDECIDED, baseId: null as string | null }, ...baseIds.map((id) => ({ key: id, baseId: id as string | null }))],
     [baseIds],
   );
 
-  // Each movable guest → the column it belongs in (first matching side wins).
-  const assignment = useMemo(() => {
+  // Each movable guest → the column the SERVER says it's in (first side wins).
+  const serverColumn = useMemo(() => {
     const map = new Map<string, string>();
     for (const g of movable) {
       const mem = membershipOf(g.id, baseIds, relations, typeLabel);
-      map.set(g.id, baseIds.find((b) => mem.includes(b)) ?? 'undecided');
+      map.set(g.id, baseIds.find((b) => mem.includes(b)) ?? UNDECIDED);
     }
     return map;
   }, [movable, baseIds, relations, typeLabel]);
 
-  const moveTo = async (guest: Guest, targetBaseId: string | null) => {
-    if (busy) return;
+  // An optimistic placement always ends up matching the server's answer (every
+  // move sets it), so `pending ?? server` is self-consistent and only needs to
+  // be reverted on failure — no auto-clear pass required.
+  const columnOf = (id: string) => pending[id] ?? serverColumn.get(id) ?? UNDECIDED;
+
+  const bumpSync = (id: string, delta: number) =>
+    setSyncing((prev) => {
+      const value = (prev[id] ?? 0) + delta;
+      const next = { ...prev };
+      if (value <= 0) delete next[id];
+      else next[id] = value;
+      return next;
+    });
+
+  const moveTo = (guest: Guest, targetBaseId: string | null) => {
+    const targetKey = targetBaseId ?? UNDECIDED;
+    setSelectedId(null);
+    if (columnOf(guest.id) === targetKey) return;
+
+    // Move the card now (optimistic); the requests fire in the background.
+    setPending((prev) => ({ ...prev, [guest.id]: targetKey }));
+
+    // The diff is against the REAL server membership (a legacy guest may be
+    // "Guest of" both sides), so adds/removes are disjoint and safe in parallel.
     const current = membershipOf(guest.id, baseIds, relations, typeLabel);
     const target = targetBaseId ? [targetBaseId] : [];
     const { toAdd, toRemove } = diffToTarget(current, target);
-    setSelectedId(null);
     if (toAdd.length === 0 && toRemove.length === 0) return;
-    setBusy(true);
+
     setError(null);
-    try {
-      // Remove the other side first so re-adding can't 409 on a stale row.
-      for (const baseId of toRemove) {
+    bumpSync(guest.id, 1);
+    const ops: Promise<void>[] = [
+      ...toRemove.map((baseId) => {
         const rel = findRelation(guest.id, baseId, relations, typeLabel);
-        if (rel) await onDelete(rel.id);
-      }
-      for (const baseId of toAdd) {
-        await onAdd({ guestAId: guest.id, guestBId: baseId, typeLabel });
-      }
-    } catch (err) {
-      const detail = err instanceof ApiError ? err.message : String(err);
-      reportClientError({ kind: 'arrange-move-failed', eventId, guestId: guest.id, detail });
-      setError(err instanceof ApiError ? err.message : t('arrange.moveFailed'));
-    } finally {
-      setBusy(false);
-    }
+        return rel ? onDelete(rel.id) : Promise.resolve();
+      }),
+      ...toAdd.map((baseId) => onAdd({ guestAId: guest.id, guestBId: baseId, typeLabel })),
+    ];
+    Promise.all(ops)
+      .catch((err: unknown) => {
+        const detail = err instanceof ApiError ? err.message : String(err);
+        reportClientError({ kind: 'arrange-move-failed', eventId, guestId: guest.id, detail });
+        setError(err instanceof ApiError ? err.message : t('arrange.moveFailed'));
+        // Revert the optimistic placement back to the server's truth.
+        setPending((prev) => {
+          const next = { ...prev };
+          delete next[guest.id];
+          return next;
+        });
+      })
+      .finally(() => bumpSync(guest.id, -1));
   };
 
   const onDropInto = (baseId: string | null) => (e: React.DragEvent) => {
@@ -102,14 +137,14 @@ export default function ArrangeBoard({
     const id = e.dataTransfer.getData('text/plain') || dragId;
     setDragId(null);
     const guest = id ? guestById.get(id) : undefined;
-    if (guest && !baseSet.has(guest.id)) void moveTo(guest, baseId);
+    if (guest && !baseSet.has(guest.id)) moveTo(guest, baseId);
   };
 
   // Tapping a column moves the tap-selected guest there (touch fallback for DnD).
   const onColumnClick = (baseId: string | null) => () => {
     if (!selectedId) return;
     const guest = guestById.get(selectedId);
-    if (guest && !baseSet.has(guest.id)) void moveTo(guest, baseId);
+    if (guest && !baseSet.has(guest.id)) moveTo(guest, baseId);
   };
 
   if (guests.length < 2) {
@@ -139,7 +174,7 @@ export default function ArrangeBoard({
 
       <div className="grid grid-cols-3 gap-2" role="list">
         {columns.map((col) => {
-          const columnGuests = movable.filter((g) => assignment.get(g.id) === col.key);
+          const columnGuests = movable.filter((g) => columnOf(g.id) === col.key);
           const armed = selectedId !== null;
           const base = col.baseId ? guestById.get(col.baseId) : undefined;
           return (
@@ -152,7 +187,7 @@ export default function ArrangeBoard({
               onDrop={onDropInto(col.baseId)}
               onClick={onColumnClick(col.baseId)}
               className={`flex min-h-40 flex-col rounded-xl border bg-stone-50/60 p-2 transition ${
-                armed && !busy
+                armed
                   ? 'cursor-pointer border-rose-300 ring-1 ring-rose-200'
                   : 'border-stone-200'
               }`}
@@ -176,14 +211,15 @@ export default function ArrangeBoard({
                 {columnGuests.map((guest) => {
                   const name = primaryName(guest);
                   const selected = selectedId === guest.id;
+                  const isSyncing = Boolean(syncing[guest.id]);
                   return (
                     <li key={guest.id}>
                       <button
                         type="button"
                         data-testid="arrange-card"
                         data-guest-id={guest.id}
-                        draggable={!busy}
-                        disabled={busy}
+                        data-syncing={isSyncing ? '' : undefined}
+                        draggable
                         onDragStart={(e) => {
                           e.dataTransfer.setData('text/plain', guest.id);
                           e.dataTransfer.effectAllowed = 'move';
@@ -195,11 +231,11 @@ export default function ArrangeBoard({
                           e.stopPropagation();
                           setSelectedId(selected ? null : guest.id);
                         }}
-                        className={`flex w-full items-center gap-1.5 rounded-lg border bg-white px-1.5 py-1.5 text-start shadow-sm transition ${
+                        className={`flex w-full items-center gap-1.5 rounded-lg border bg-white px-1.5 py-1.5 text-start shadow-sm transition cursor-grab active:cursor-grabbing ${
                           selected
                             ? 'border-rose-400 ring-2 ring-rose-200'
                             : 'border-stone-200 hover:border-rose-200'
-                        } ${busy ? 'opacity-60' : 'cursor-grab active:cursor-grabbing'}`}
+                        } ${isSyncing ? 'opacity-70' : ''}`}
                       >
                         <Avatar name={name} size="sm" />
                         <span className="min-w-0 truncate text-xs font-medium text-stone-900">

@@ -46,6 +46,7 @@ Rules:
 # api/.env.prod
 DATABASE_URL=postgresql://postgres.<ref>:<pw>@aws-1-<region>.pooler.supabase.com:6543/postgres
 DIRECT_DATABASE_URL=postgresql://postgres.<ref>:<pw>@aws-1-<region>.pooler.supabase.com:5432/postgres   # session mode — migrations only
+DATABASE_SSL=true
 WEB_ORIGIN=https://<web-prod-domain>
 
 # web/.env.prod
@@ -105,8 +106,9 @@ vercel deploy --prod                      # → https://wedinvite-web.vercel.app
 # 5. close the loop: set WEB_ORIGIN in api/.env.prod to the web URL,
 #    re-push env, redeploy api (env changes need a redeploy)
 
-# 6. smoke test against prod
-cd e2e && BASE_URL=https://<web-prod-domain> npx playwright test smoke
+# 6. smoke test against prod (the Playwright suite targets localhost only)
+curl -s https://<api-prod-domain>/api     # → {"status":"ok"}
+#    then open https://<web-prod-domain>, create an event, add a guest
 ```
 
 Later (optional): push the repo to GitHub and connect both Vercel projects to it —

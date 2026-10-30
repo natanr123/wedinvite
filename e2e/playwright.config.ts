@@ -7,8 +7,8 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: 'http://localhost:3000',
-    // Deterministic locale: the i18n proxy redirects locale-less paths by
-    // Accept-Language, so pin en-US to land on /en for the English assertions.
+    // Deterministic browser locale. Locale routing doesn't depend on it: the
+    // proxy sends every locale-less path to /he, so English tests use /en/... URLs.
     locale: 'en-US',
     trace: 'on-first-retry',
   },

@@ -1,7 +1,8 @@
 # WedInvite — Architecture & Plan
 
-A wedding invitation planning platform. Local development only at this stage; designed to
-move to **Supabase** (Postgres) + **Vercel** later.
+A wedding invitation planning platform. Runs locally against Postgres in Docker; production
+runs on **Vercel** (separate web + api projects) with **Supabase** Postgres — see
+[DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ## Core ideas
 
@@ -10,8 +11,8 @@ move to **Supabase** (Postgres) + **Vercel** later.
 - **Browser localStorage** stores only the list of event ids the user has created/visited
   (key: `wedinvite.eventIds`). All actual data lives in Postgres.
 - **Guests have multiple first names and multiple last names** (married name, maiden name,
-  nickname…) so the same person isn't added twice under a different name. The UI warns
-  about likely duplicates when adding a guest.
+  nickname…) so the same person isn't added twice under a different name. The UI blocks
+  name combinations the DB would reject and warns about likely duplicates.
 - **Relations** link two guests with a typed relationship ("Sister", "Friend"…).
   Built-in presets + user-defined custom types per event.
 
@@ -79,8 +80,11 @@ Notes:
 - `type_label` is stored as a string on the relation (simple, robust). The
   `relation_types` table only records the event's *custom* types so they show up as
   options next time; presets live as a constant list in the API.
-- Duplicate relations are rejected in either direction (A–B == B–A for same label).
-- TypeORM `synchronize: true` for local dev; migrations come later with Supabase.
+- Duplicate relations are rejected in either direction (A–B == B–A for same label);
+  this is enforced in the service, not by a DB constraint.
+- The schema is migration-managed (`api/src/migrations/`); `synchronize` is a local-dev
+  convenience only (`DATABASE_SYNC=true`). `guest_name_pairs` and `guest_name_norm()`
+  exist only in migrations.
 
 ## API (NestJS, prefix `/api`, port 3001)
 
@@ -91,7 +95,7 @@ POST   /api/events/:eventId/guests                {firstNames[], lastNames[], ph
 GET    /api/events/:eventId/guests
 PATCH  /api/events/:eventId/guests/:id          full replacement (names, phone, address)
 DELETE /api/events/:eventId/guests/:id
-GET    /api/events/:eventId/relation-types      → presets ∪ custom
+GET    /api/events/:eventId/relation-types      → {presets, custom}
 POST   /api/events/:eventId/relation-types      {label}
 POST   /api/events/:eventId/relations           {guestAId, guestBId, typeLabel}
 GET    /api/events/:eventId/relations
@@ -103,17 +107,25 @@ the event ("allow the user to add his own").
 
 ## Frontend (Next.js, port 3000)
 
-- `/` — create a new event (title + optional date); list of "your events" loaded from
-  localStorage ids, details fetched from the API.
-- `/events/[id]` — event dashboard, mobile-first single column:
-  - Action bar ("Add guest" / "Add relation") + tabs (Guests | Relations) over the lists.
-  - Each action expands its own inline form below the action bar (no popups/modals).
-    Only one form can be open at a time — while creating a guest the "Add relation"
-    and per-card "Connect" buttons are disabled, and vice versa.
-  - **Guests panel**: chip-style inputs for multiple first/last names, optional
-    phone/address, inline duplicate warning when names match an existing guest.
-  - **Relations panel**: opened from the action bar, or from a guest's "Connect" button
-    (that guest preselected as side A). Relations read "A is <type> of B".
+Every page lives under a `[lang]` segment (`/he/…` or `/en/…`); `web/src/proxy.ts`
+redirects locale-less paths to `/he` (the default). All UI copy lives in
+`web/src/dictionaries/{en,he}.json`.
+
+- `/[lang]` — create a new event (title + optional date); list of "your events" loaded
+  from localStorage ids, details fetched from the API.
+- `/[lang]/events/[id]` — event dashboard, mobile-first single column:
+  - "Add guest" button + tabs (Guests | Relations | Arrange) over the lists.
+  - Each action expands its own inline form below the button (no popups/modals). Only
+    one form can be open at a time (add guest, edit guest, or add relation).
+  - **Guest form**: chip-style inputs for multiple first/last names (drag a chip to the
+    front to make it the primary name), optional phone/address; blocks name combinations
+    that are already taken and warns about similar names. Clicking a guest card opens the
+    same form prefilled for editing.
+  - **Relation form**: opened from a guest's "Connect" button (that guest is side A).
+    Relations read `A is <type> of B`.
+  - **Arrange**: the first two guests are the two sides; drag or tap any other guest into
+    the Undecided column or one of the two side columns, which creates or deletes
+    "Guest of" relations.
 - Visiting an event page successfully also saves its id to localStorage (that *is* the
   loading mechanism — no sharing UI built).
 
@@ -123,5 +135,5 @@ the event ("allow the user to add his own").
 docker compose up -d          # postgres on 127.0.0.1:54329
 cd api && npm run start:dev   # http://localhost:3001/api
 cd web && npm run dev         # http://localhost:3000
-cd e2e && npx playwright test # end-to-end tests (needs both servers up)
+cd e2e && npx playwright test # end-to-end tests (starts api + web if not running; needs Postgres)
 ```

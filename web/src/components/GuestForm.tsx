@@ -78,10 +78,18 @@ export default function GuestForm({ guests, initial, onSubmit, onDone }: GuestFo
       }
       onDone?.();
     } catch (err) {
+      // A 409 the client-side duplicate check missed (stale guest list, or a
+      // normalization edge case): show the localized message, not the API's English one.
+      const conflict =
+        err instanceof ApiError && err.status === 409
+          ? err.details?.conflictingGuestName
+          : undefined;
       setError(
-        err instanceof ApiError
-          ? err.message
-          : t(initial ? 'guestForm.saveFailed' : 'guestForm.addFailed'),
+        typeof conflict === 'string'
+          ? t('guestForm.duplicateBlocked', { names: conflict })
+          : err instanceof ApiError
+            ? err.message
+            : t(initial ? 'guestForm.saveFailed' : 'guestForm.addFailed'),
       );
     } finally {
       setSaving(false);

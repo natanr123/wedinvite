@@ -36,6 +36,9 @@ Rules:
   file). Locally they read `.env`. The two never meet.
 - All `.env*` files are gitignored; committed `.env.example` / `.env.prod.example`
   document the required keys.
+- `api/.vercelignore` and `web/.vercelignore` exclude every `.env*` file from
+  `vercel deploy` uploads — the Vercel CLI does not apply `.gitignore`, so without them
+  local and production env files would ship with the deployment source.
 - Push script: `scripts/vercel-env-push.sh <dir> <env-file>` — loops the file into
   `vercel env add <KEY> production --force` (stdin, non-interactive, overwrites).
   Re-running it is idempotent. (Bulk alternative: `POST /v10/projects/:id/env?upsert=true`.)

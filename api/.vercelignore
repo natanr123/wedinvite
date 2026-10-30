@@ -1,0 +1,4 @@
+# Keep every env file out of `vercel deploy` uploads. The Vercel CLI does not
+# apply .gitignore, and Vercel injects the project's environment variables at
+# build and run time — see DEPLOYMENT.md.
+.env*

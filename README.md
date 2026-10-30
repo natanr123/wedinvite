@@ -39,3 +39,7 @@ npx playwright test        # needs postgres + api + web running
 | `api/` | NestJS backend + TypeORM      |
 | `web/` | Next.js frontend              |
 | `e2e/` | Playwright end-to-end tests   |
+
+## License
+
+[MIT](./LICENSE)
